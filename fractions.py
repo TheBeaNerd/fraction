@@ -14,8 +14,8 @@
 ## If you look as these as the denominators of normalized
 ## fractions, the numbers appear in "order" ..
 ##
-## (0/1 1/2 1/1)
-## (0/1 1/3 1/2 2/3 1/1)
+## (0/1             1/2             1/1)
+## (0/1     1/3     1/2     2/3     1/1)
 ## (0/1 1/4 1/3 2/5 1/2 3/5 2/3 3/4 1/1)
 ##
 ## Note: all of the /5 fractions aren't there yet ..
@@ -47,9 +47,9 @@
 ## variant of euclids algorithm in fancy wrapping.
 ##
 def c2rec(n1,d1,n2,d2):
-    print n1,d1," ",(- n2),d2
-    if ((n1 < 1) or (n2 < 1)):
-        return 0
+    print n1,"/",d1," ",(- n2),"/",d2
+    if ((n1 <= 1) or (n2 <= 1)):
+        return min(n1,n2)
     if (n2 <= n1):
       return c2rec(n1-n2,d1+d2,n2,d2)
     if (n1 < n2):
@@ -58,4 +58,57 @@ def c2rec(n1,d1,n2,d2):
       return n1
 
 def c2(x,p):
-    return c2rec(x,1,p,0);
+    return c2rec(x,1,p,0)
+
+##
+## a/b = c/d
+## 
+## a + k(c) = b + k(d)
+## k(c-d) = (b-a)
+## k = (b-a)/(c-d)
+## k = -(a-b)/-(d-c)
+## k = (a-b)/(d-c)
+##
+## c + m(a) = d + m(b)
+## m(a-b) = (d-c)
+## m = (d-c)/(a-b)
+##
+## e' = a + k(c) - b + k(d)
+## e' = (a-b) - k(c-d)
+## 
+
+def sign(x):
+    return (0 if (x == 0) else (1 if (x > 0) else -1))
+
+def div(n,d):
+    sn = sign(n)
+    sd = sign(d)
+    s = sd*sn
+    n = sn*n
+    d = sd*d
+    q = n / d
+    m = n % d
+    if (m*2 > d):
+        q = q + 1
+    return s*q
+
+def same_rec(a,b,c,d):
+    print a,b," ",c,d
+    x = (a-b)
+    y = (d-c)
+    if (abs(y)<=1):
+        return y
+    q = div(x,y)
+    return same_rec(c,d,a+q*c,b+q*d)
+
+def same(a,b,c,d):
+    x = abs(a-b)
+    y = abs(d-c)
+    if (x<y):
+        return same_rec(c,d,a,b)
+    return same_rec(a,b,c,d)
+
+def s2(x,p):
+    return same_rec(x,1,p,0)
+
+## c2(113,5233)
