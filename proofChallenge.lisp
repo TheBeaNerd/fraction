@@ -73,18 +73,34 @@
 
 (in-theory (disable nzifix ifix nfix posp posfix abs))
 
-(defun mabs (v p)
+(defun smod (v p)
   (let ((v (ifix v))
         (p (posfix p)))
     (let ((x (mod v p)))
       (if (<= (* 2 x) p) x
-        (- p x)))))
+        (- (- p x))))))
+
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
+  (defthm smod-mod
+    (implies
+     (posp p)
+     (equal (mod (smod v p) p)
+            (mod (ifix v) p))))
+  
+  )
+
+(defun sign (x)
+  (if (< (ifix x) 0) -1 1))
+
+(defun mabs (v p)
+  (abs (smod v p)))
 
 (defun msign (v p)
-  (let ((v (ifix v))
-        (p (posfix p)))
-    (let ((x (mod v p)))
-      (if (<= (* 2 x) p) 1 -1))))
+  (sign (smod v p)))
 
 (encapsulate
     ()
@@ -142,9 +158,6 @@
                    (:forward-chaining :trigger-terms ((pdiv n d)))))
  
   )
-
-(defun sign (x)
-  (if (< (ifix x) 0) -1 1))
 
 (defun pmod (n d)
   (let ((d (nzifix d))
@@ -346,6 +359,90 @@
                         Q)))
   
   )
+
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
+  ;; Can you make a smaller value (of the same sign) from n?
+  ;; 
+  
+  ;; So .. it is impossible to make a new value with the
+  ;; same sign except under exceptional conditions.
+  
+  (defthm same-msign-less-than-reduction
+    (implies
+     (and
+      (posp q)
+      (integerp n)
+      (integerp p)
+      )
+     (iff (and (< (mabs (+ n p) q) (mabs n q))
+               (equal (msign (+ n p) q) (msign n q)))
+          (if (equal (mabs n q) (mabs p q))
+              (and (equal (+ (mod n q) (mod p q)) q)
+                   (< 0 (mabs n q))
+                   (equal 1 (msign n q)))
+            (and (not (equal (mod p q) 0))
+                 (not (equal (msign n q) (msign p q)))
+                 (< (mabs p q) (mabs n q))))))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable posp abs mabs))))
+
+  (defthm standard-differential-reduction
+    (implies
+     (and
+      (posp q)
+      (integerp n)
+      (integerp p)
+      (not (equal (msign n q) (msign p q)))
+      (< (mabs p q) (mabs n q))
+      )
+     (iff (< (mabs (+ n p) q) (mabs n q))
+          (not (equal (mod p q) 0))))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable posp mabs abs))))
+
+
+  )
+  
+;; How about making values with the opposite sign?
+;; That seems like a challenging part of the proof.
+
+;; Well, for sufficiently small values it is, in fact, not possible.
+
+;; 0..............x..............|
+
+dag
+(local (include-book "arithmetic-5/top" :dir :system))
+
+(defthm sign-difference
+  (implies
+   (not (equal (msign n q) (msign p q)))
+   (not (equal (mabs n q) (mabs p q))))
+  :hints (("Goal" :in-theory (enable mabs))))
+
+
+
+  :hints (("Goal" :in-theory (enable posp mabs)
+           :cases ((< (mabs p q) (mabs n q))))))
+
+(defthm standard-differential-reduction
+  (implies
+   (and
+    (posp q)
+    (integerp n)
+    (integerp p)
+    )
+   (iff (< (mabs (+ n p) q) (mabs n q))
+        (if (not (equal (msign n q) (msign p q)))
+            (and (not (equal (mod p q) 0))
+                 (< (* 2 (mabs p q)) (mabs n q)))
+          nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable posp mabs))))
+
 
 (defun-sk best-coefficient (k x p)
   (forall (q) (implies (< (abs (ifix q))
