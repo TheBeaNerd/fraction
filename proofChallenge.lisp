@@ -73,10 +73,6 @@
 
 (in-theory (disable nzifix ifix nfix posp posfix abs))
 
-#+joe
-(defun-sk best-coefficient (k x p)
-  (forall (q) (implies (< q k) (< (mabs (* k x) p) (mabs (* q x) p)))))
-
 (defun mabs (v p)
   (let ((v (ifix v))
         (p (posfix p)))
@@ -351,46 +347,33 @@
   
   )
 
-#|
-dag
+(defun-sk best-coefficient (k x p)
+  (forall (q) (implies (< (abs (ifix q))
+                          (abs (ifix k))) 
+                       (< (mabs (* (ifix k) (ifix x)) (posfix p))
+                          (mabs (* (ifix q) (ifix x)) (posfix p))))))
 
-(encapsulate
-    ()
-
-  (local (include-book "arithmetic-5/top" :dir :system))
-
-
-  (defun minB (k S m L)
-    (declare (xargs :measure (nfix S)
-                    :hints (("Goal" :in-theory (enable nfix)))))
-    (let ((k (posfix k))
-          (S (nfix S))
-          (m (posfix m))
-          (L (nfix L)))
-      (if (and (< S L) (< k S) (< m L))
-          (met ((k S m L) (minBstep k S m L))
-            (minB k S m L))
-        (if (< k S) (mv m L) (mv k S)))))
-
-  )
-
-(include-book "arithmetic-5/top" :dir :system)
-
-(in-theory (disable posp))
-
-(defthm minBstep-property
+#+joe
+(defun best-coefficient-bad-guy (q k x p)
+  (let ((q (ifix q))
+        (k (ifix k))
+        (x (ifix x))
+        (p (posfix p)))
+    (let ((q (if (<= k q) (1- k) q)))
+      (if (zp q) q
+        (if (not (< (mabs (* k x) p)
+                    (mabs (* q x) p))) q
+          (best-coefficient-bad-guy (1- q) k x p))))))
+      
+#+joe
+(defthm best-coefficient-val-0
   (implies
    (and
-    (posp k)
-    (posp m)
-    (posp S)
-    (posp L)
-    (< S L)
-    (integerp x)
-    (equal (mabs (* k x) P) (mabs S P))
-    (equal (mabs (* m x) P) (mabs L P)))
-   (and (equal (mabs (* (val 0 (minBstep k S m L)) x) P)
-               (mabs (val 1 (minBstep k S m L)) P))
-        (equal (mabs (* (val 2 (minBstep k S m L)) x) P)
-               (mabs (val 3 (minBstep k S m L)) P)))))
-|#
+    (best-coefficient k x Q)
+    (best-coefficient m x Q)
+    (< 0 P)
+    (< N 0)
+    (minBstepInvariant k N m P x Q))
+   (best-coefficient (val 0 (minBstep k N m P)) x Q)))
+
+   
