@@ -370,7 +370,7 @@
 
   (local (include-book "arithmetic-5/top" :dir :system))
   
-  (defthm mabs-less-than-reduction
+  (defthm mabs-plus-less-than-reduction
     (implies
      (and
       (posp q)
@@ -378,19 +378,20 @@
       (integerp p)
       )
      (iff (< (mabs (+ n p) q) (mabs n q))
+          ;; If p is zero, this is uninteresting.
           (if (equal (smod p q) 0) nil
+            ;; This is also just boring.
             (if (equal (+ (smod N Q) (smod P Q)) 0) (< 0 (mabs n q))
+              ;; Are p and n of opposite sign?
               (if (not (equal (msign p q) (msign n q)))
-                  (if (< (mabs p q) (mabs n q)) t
-                    ;;
-                    (if (< (+ (MOD N Q) (MOD P Q)) Q)
-                        (< Q (+ (MOD P Q) (* 2 (MOD N Q))))
-                      (< (+ (MOD P Q) (* 2 (MOD N Q))) (* 2 Q))))
-                (if (< 0 (msign p q))
-                    (and (< Q (+ (* 2 (MOD P Q)) (* 2 (MOD N Q)) ))
-                         (< Q (+      (MOD P Q)  (* 2 (MOD N Q)))))
-                  (and (<= (+ (* 2 (MOD P Q)) (* 2 (MOD N Q))) (* 3 Q))
-                       (<  (+      (MOD P Q)  (* 2 (MOD N Q))) (* 2 Q)))))))))
+                  ;; The usual case.
+                  (if (<= (mabs p q) (mabs n q)) t
+                    ;; We can change n's sign.
+                    (< (mabs p q) (* 2 (mabs n q))))
+                ;; If n is in the 1st quandrant, forget it.
+                (if (<= (* 4 (mabs n q)) q) nil
+                  ;; Is it big enough to lap into the 3rd quadrant?
+                  (< (- q (mabs n q)) (+ (mabs n q) (mabs p q)))))))))
     :otf-flg t
     :rule-classes nil
     :hints (("Goal" :do-not-induct t
