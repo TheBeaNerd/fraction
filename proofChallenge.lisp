@@ -85,6 +85,11 @@
 
   (local (include-book "arithmetic-5/top" :dir :system))
   
+  (defthm integerp-smod
+    (integerp (smod v p))
+    :rule-classes (:rewrite
+                   (:forward-chaining :trigger-terms ((smod v p)))))
+
   (defthm smod-mod
     (implies
      (posp p)
@@ -365,6 +370,124 @@
 
   (local (include-book "arithmetic-5/top" :dir :system))
   
+  (defthm mabs-less-than-reduction
+    (implies
+     (and
+      (posp q)
+      (integerp n)
+      (integerp p)
+      )
+     (iff (< (mabs (+ n p) q) (mabs n q))
+          (if (equal (smod p q) 0) nil
+            (if (equal (+ (MOD N Q) (MOD P Q)) q) (< 0 (mabs n q))
+              (if (not (equal (msign p q) (msign n q)))
+                  (if (< (mabs p q) (mabs n q)) t
+                    (if (< (+ (MOD N Q) (MOD P Q)) Q)
+                        (< Q (+ (MOD P Q) (* 2 (MOD N Q))))
+                      (< (+ (MOD P Q) (* 2 (MOD N Q))) (* 2 Q))))
+                (if (< 0 (msign p q))
+                    (and (< Q (+ (* 2 (MOD N Q)) (* 2 (MOD P Q))))
+                         (< Q (+ (MOD P Q) (* 2 (MOD N Q)))))
+                  (and (<= (+ (* 2 (MOD N Q)) (* 2 (MOD P Q))) (* 3 Q))
+                       (< (+ (MOD P Q) (* 2 (MOD N Q))) (* 2 Q)))))))))
+    :otf-flg t
+    :rule-classes nil
+    :hints (("Goal" :do-not-induct t
+             :in-theory (e/d (posp abs mabs smod) nil))))
+
+  )
+
+#+joe
+(defthmd rewrite-value
+  (implies
+   (and
+    (equal (smod p q) v)
+    (integerp p)
+    (integerp q)
+    (integerp v)
+    (integerp n)
+    (equal z (smod (+ n v) q))
+    (syntaxp (not (equal z `(smod (+ ,n ,p) ,q)))))
+   (equal (smod (+ n p) q)
+          z)))
+
+#+joe
+(encapsulate
+    ()
+
+  (local (include-book "coi/nary/nary-mod" :dir :system))
+  (local (IN-THEORY (ENABLE NARY::MOD-RULES)))
+  (defthm smod-smod
+    (implies
+     (integerp p)
+     (equal (smod (+ n (smod p q)) q)
+            (smod (+ n p) q)))
+    :hints (("Goal" :in-theory (enable ifix))))
+
+  )
+
+#+joe
+(defthm negative-lower-bounds
+  (implies
+   (and
+    (< (smod n q) 0)
+    (natp q))
+   (< (- q) (* 2 (smod n q))))
+  :hints (("Goal" :in-theory (enable posfix)))
+  :rule-classes (:linear
+                 (:forward-chaining :trigger-terms ((smod n q)))))
+
+#+joe
+(defthm positive-upper-bounds
+  (implies
+   (and
+    (< 0 (smod n q))
+    (natp q))
+   (and
+    (< (smod n q) q)
+    (<= (* 2 (smod n q)) q)))
+  :hints (("Goal" :in-theory (enable posfix)))
+  :rule-classes (:linear
+                 (:forward-chaining :trigger-terms ((smod n q)))))
+  
+#+joe
+(defthm alt-smod-fact
+  (IMPLIES (AND (INTEGERP Q)
+                (< 0 Q)
+                (INTEGERP N)
+                (INTEGERP P)
+                (< (SMOD (+ N P) Q) 0)
+                (< (SMOD N Q) 0)
+                (< (SMOD P Q) 0))
+           (< (SMOD (+ N P) Q) (SMOD N Q)))
+  :rule-classes (:linear))
+
+#+joe
+(defthm same-msign-less-than-reduction
+  (implies
+   (and
+    (posp q)
+    (integerp n)
+    (integerp p)
+    )
+   (iff (and (< (mabs (+ n p) q) (mabs n q))
+             (equal (msign (+ n p) q) (msign n q)))
+        (if (equal (mabs n q) (mabs p q))
+            (and (equal (+ (mod n q) (mod p q)) q)
+                 (< 0 (mabs n q))
+                 (equal 1 (msign n q)))
+          (and (not (equal (mod p q) 0))
+               (not (equal (msign n q) (msign p q)))
+               (< (mabs p q) (mabs n q))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (posp abs mabs) (smod)))))
+
+#+joe
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
   ;; Can you make a smaller value (of the same sign) from n?
   ;; 
   
@@ -404,9 +527,9 @@
     :rule-classes nil
     :hints (("Goal" :in-theory (enable posp mabs abs))))
 
-
   )
-  
+
+
 ;; How about making values with the opposite sign?
 ;; That seems like a challenging part of the proof.
 
@@ -414,63 +537,92 @@
 
 ;; 0..............x..............|
 
-dag
+(defun smallest-coefficient-p (q k x p)
+  (implies
+   (and 
+    (equal (msign (* k x) p) 
+           (msign (* q x) p))
+    (< (mabs (* q x) p)
+       (mabs (* k x) p)))
+   (< k q)))
+
+(in-theory (disable smallest-coefficient-p))
+
+(defun-sk smallest-coefficient (k x p)
+  (forall (q) (smallest-coefficient-p (nfix q) (nfix k) (nfix x) (posfix p))))
+
+(in-theory (disable smallest-coefficient))
+
+(defthmd smallest-coefficient-implication
+  (implies
+   (and
+    (natp q)
+    (smallest-coefficient k x p)
+    (natp k)
+    (natp x)
+    (posp p))
+   (smallest-coefficient-p q k x p))
+  :hints (("Goal" :use (:instance smallest-coefficient-necc))))
+
 (local (include-book "arithmetic-5/top" :dir :system))
 
-(defthm sign-difference
-  (implies
-   (not (equal (msign n q) (msign p q)))
-   (not (equal (mabs n q) (mabs p q))))
-  :hints (("Goal" :in-theory (enable mabs))))
-
-
-
-  :hints (("Goal" :in-theory (enable posp mabs)
-           :cases ((< (mabs p q) (mabs n q))))))
-
-(defthm standard-differential-reduction
-  (implies
-   (and
-    (posp q)
-    (integerp n)
-    (integerp p)
-    )
-   (iff (< (mabs (+ n p) q) (mabs n q))
-        (if (not (equal (msign n q) (msign p q)))
-            (and (not (equal (mod p q) 0))
-                 (< (* 2 (mabs p q)) (mabs n q)))
-          nil)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable posp mabs))))
-
-
-(defun-sk best-coefficient (k x p)
-  (forall (q) (implies (< (abs (ifix q))
-                          (abs (ifix k))) 
-                       (< (mabs (* (ifix k) (ifix x)) (posfix p))
-                          (mabs (* (ifix q) (ifix x)) (posfix p))))))
+(in-theory (disable smod))
 
 #+joe
-(defun best-coefficient-bad-guy (q k x p)
-  (let ((q (ifix q))
-        (k (ifix k))
-        (x (ifix x))
-        (p (posfix p)))
-    (let ((q (if (<= k q) (1- k) q)))
-      (if (zp q) q
-        (if (not (< (mabs (* k x) p)
-                    (mabs (* q x) p))) q
-          (best-coefficient-bad-guy (1- q) k x p))))))
-      
+(defthm smallest-coefficient-p-plus
+  (IMPLIES
+   (AND (natp I)
+        (natp KD)
+        (INTEGERP X)
+        (<= 0 X)
+        (INTEGERP Q)
+        (< 0 Q)
+        (INTEGERP K)
+        (< 0 K)
+        (INTEGERP M)
+        (< 0 M)
+        (<= (SMOD (* K X) Q) 0)
+        (<= 0 (SMOD (* M X) Q))
+        (< 0 (SMOD (* M X) Q))
+        (< (SMOD (* K X) Q) 0)
+        (SMALLEST-COEFFICIENT K X Q)
+        (SMALLEST-COEFFICIENT M X Q)
+        (< (- (SMOD (* K X) Q)) (SMOD (* M X) Q)))
+   (SMALLEST-COEFFICIENT-P (+ M I) (+ M KD) X Q))
+  :hints (("Goal" :cases ((not (> I KD))))
+          ("Subgoal 2" :expand (SMALLEST-COEFFICIENT-P (+ I M) (+ KD M) X Q))
+          ("Subgoal 1" :cases ((not (<= I K))))
+          ("Subgoal 1.2" :use (:instance smallest-coefficient-implication
+                                         (k k)
+                                         (x x)
+                                         (p q)
+                                         (q I))
+           :expand (SMALLEST-COEFFICIENT-P I K X Q))
+          ("Subgoal 1.2.5" :expand (SMALLEST-COEFFICIENT-P (+ I M)
+                                 (+ KD M)
+                                 X Q))
+          ))
+
 #+joe
-(defthm best-coefficient-val-0
+(defthm try-this-proof
   (implies
    (and
-    (best-coefficient k x Q)
-    (best-coefficient m x Q)
-    (< 0 P)
-    (< N 0)
-    (minBstepInvariant k N m P x Q))
-   (best-coefficient (val 0 (minBstep k N m P)) x Q)))
-
-   
+    (minBstepInvariant k (smod (* k x) q) m (smod (* m x) q) x Q)
+    (< 0 (smod (* m x) q))
+    (< (smod (* k x) q) 0)
+    (smallest-coefficient k x q)
+    (smallest-coefficient m x q))
+   (and (smallest-coefficient (val 0 (minBstep k (smod (* k x) q) m (smod (* m x) q))) x q)
+        (smallest-coefficient (val 2 (minBstep k (smod (* k x) q) m (smod (* m x) q))) x q)))
+  :hints (("Goal" :in-theory (e/d (abs) (msign smod smallest-coefficient)))
+          ("Subgoal 3''" :expand ((SMALLEST-COEFFICIENT (+ M
+                                                           (* K
+                                                              (PDIV (SMOD (* M X) Q)
+                                                                    (SMOD (* K X) Q))))
+                                                        X Q)))
+          ("Subgoal 3'''" :cases ((not (<= (nfix (SMALLEST-COEFFICIENT-WITNESS (+ M
+                                                                                  (* K
+                                                                                     (PDIV (SMOD (* M X) Q)
+                                                                                           (SMOD (* K X) Q))))
+                                                                               X Q)) M))))
+          ))
