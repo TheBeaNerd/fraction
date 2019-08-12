@@ -379,17 +379,18 @@
       )
      (iff (< (mabs (+ n p) q) (mabs n q))
           (if (equal (smod p q) 0) nil
-            (if (equal (+ (MOD N Q) (MOD P Q)) q) (< 0 (mabs n q))
+            (if (equal (+ (smod N Q) (smod P Q)) 0) (< 0 (mabs n q))
               (if (not (equal (msign p q) (msign n q)))
                   (if (< (mabs p q) (mabs n q)) t
+                    ;;
                     (if (< (+ (MOD N Q) (MOD P Q)) Q)
                         (< Q (+ (MOD P Q) (* 2 (MOD N Q))))
                       (< (+ (MOD P Q) (* 2 (MOD N Q))) (* 2 Q))))
                 (if (< 0 (msign p q))
-                    (and (< Q (+ (* 2 (MOD N Q)) (* 2 (MOD P Q))))
-                         (< Q (+ (MOD P Q) (* 2 (MOD N Q)))))
-                  (and (<= (+ (* 2 (MOD N Q)) (* 2 (MOD P Q))) (* 3 Q))
-                       (< (+ (MOD P Q) (* 2 (MOD N Q))) (* 2 Q)))))))))
+                    (and (< Q (+ (* 2 (MOD P Q)) (* 2 (MOD N Q)) ))
+                         (< Q (+      (MOD P Q)  (* 2 (MOD N Q)))))
+                  (and (<= (+ (* 2 (MOD P Q)) (* 2 (MOD N Q))) (* 3 Q))
+                       (<  (+      (MOD P Q)  (* 2 (MOD N Q))) (* 2 Q)))))))))
     :otf-flg t
     :rule-classes nil
     :hints (("Goal" :do-not-induct t
