@@ -104,6 +104,17 @@
 (defun mabs (v p)
   (abs (smod v p)))
 
+(defthm integerp-mabs
+  (integerp (mabs v p))
+  :rule-classes (:rewrite
+                 (:forward-chaining :trigger-terms ((mabs v p)))))
+
+(defthm positive-mabs
+  (<= 0 (mabs v p))
+  :rule-classes (:rewrite 
+                 :linear
+                 (:forward-chaining :trigger-terms ((mabs v p)))))
+
 (defun msign (v p)
   (sign (smod v p)))
 
@@ -370,7 +381,7 @@
 
   (local (include-book "arithmetic-5/top" :dir :system))
   
-  (defthm mabs-plus-less-than-reduction
+  (defthmd mabs-plus-lt-reduction
     (implies
      (and
       (posp q)
@@ -393,7 +404,33 @@
                   ;; Is it big enough to lap into the 3rd quadrant?
                   (< (- q (mabs n q)) (+ (mabs n q) (mabs p q)))))))))
     :otf-flg t
-    :rule-classes nil
+    :hints (("Goal" :do-not-induct t
+             :in-theory (e/d (posp abs mabs smod) nil))))
+
+  (defthmd mabs-plus-lte-reduction
+    (implies
+     (and
+      (posp q)
+      (integerp n)
+      (integerp p)
+      )
+     (iff (< (mabs n q) (mabs (+ n p) q))
+          (not
+           ;; If p is zero, this is uninteresting.
+           (if (equal (smod p q) 0) t
+             ;; This is also just boring.
+             (if (equal (+ (smod N Q) (smod P Q)) 0) (<= 0 (mabs n q))
+               ;; Are p and n of opposite sign?
+               (if (not (equal (msign p q) (msign n q)))
+                   ;; The usual case.
+                   (if (<= (mabs p q) (mabs n q)) t
+                     ;; We can change n's sign.
+                     (<= (mabs p q) (* 2 (mabs n q))))
+                 ;; If n is in the 1st quandrant, forget it.
+                 (if (< (* 4 (mabs n q)) q) nil
+                   ;; Is it big enough to lap into the 3rd quadrant?
+                   (<= (- q (mabs n q)) (+ (mabs n q) (mabs p q))))))))))
+    :otf-flg t
     :hints (("Goal" :do-not-induct t
              :in-theory (e/d (posp abs mabs smod) nil))))
 
@@ -496,7 +533,7 @@
   ;; So .. it is impossible to make a new value with the
   ;; same sign except under exceptional conditions.
   
-  (defthm same-msign-less-than-reduction
+  (defthm same-msign-lt-reduction
     (implies
      (and
       (posp q)
@@ -570,61 +607,44 @@
 
 (in-theory (disable smod))
 
-#+joe
-(defthm smallest-coefficient-p-plus
-  (IMPLIES
-   (AND (natp I)
-        (natp KD)
-        (INTEGERP X)
-        (<= 0 X)
-        (INTEGERP Q)
-        (< 0 Q)
-        (INTEGERP K)
-        (< 0 K)
-        (INTEGERP M)
-        (< 0 M)
-        (<= (SMOD (* K X) Q) 0)
-        (<= 0 (SMOD (* M X) Q))
-        (< 0 (SMOD (* M X) Q))
-        (< (SMOD (* K X) Q) 0)
-        (SMALLEST-COEFFICIENT K X Q)
-        (SMALLEST-COEFFICIENT M X Q)
-        (< (- (SMOD (* K X) Q)) (SMOD (* M X) Q)))
-   (SMALLEST-COEFFICIENT-P (+ M I) (+ M KD) X Q))
-  :hints (("Goal" :cases ((not (> I KD))))
-          ("Subgoal 2" :expand (SMALLEST-COEFFICIENT-P (+ I M) (+ KD M) X Q))
-          ("Subgoal 1" :cases ((not (<= I K))))
-          ("Subgoal 1.2" :use (:instance smallest-coefficient-implication
-                                         (k k)
-                                         (x x)
-                                         (p q)
-                                         (q I))
-           :expand (SMALLEST-COEFFICIENT-P I K X Q))
-          ("Subgoal 1.2.5" :expand (SMALLEST-COEFFICIENT-P (+ I M)
-                                 (+ KD M)
-                                 X Q))
-          ))
-
-#+joe
-(defthm try-this-proof
+(defthm set-of-smallest-coefficients-small-step-1
   (implies
    (and
-    (minBstepInvariant k (smod (* k x) q) m (smod (* m x) q) x Q)
-    (< 0 (smod (* m x) q))
+    (natp k)
+    (natp m)
+    (natp x)
+    (posp q)
+    (SMALLEST-COEFFICIENT K X Q)
+    (SMALLEST-COEFFICIENT M X Q)
+    (< (* 4 (mabs (* m x) q)) q)
+    (< (* 4 (mabs (* k x) q)) q)
     (< (smod (* k x) q) 0)
-    (smallest-coefficient k x q)
-    (smallest-coefficient m x q))
-   (and (smallest-coefficient (val 0 (minBstep k (smod (* k x) q) m (smod (* m x) q))) x q)
-        (smallest-coefficient (val 2 (minBstep k (smod (* k x) q) m (smod (* m x) q))) x q)))
-  :hints (("Goal" :in-theory (e/d (abs) (msign smod smallest-coefficient)))
-          ("Subgoal 3''" :expand ((SMALLEST-COEFFICIENT (+ M
-                                                           (* K
-                                                              (PDIV (SMOD (* M X) Q)
-                                                                    (SMOD (* K X) Q))))
-                                                        X Q)))
-          ("Subgoal 3'''" :cases ((not (<= (nfix (SMALLEST-COEFFICIENT-WITNESS (+ M
-                                                                                  (* K
-                                                                                     (PDIV (SMOD (* M X) Q)
-                                                                                           (SMOD (* K X) Q))))
-                                                                               X Q)) M))))
+    (< 0 (smod (* m x) q))
+    (natp N)
+    ;;
+    (< (mabs (* k x) q) (mabs (* m x) q))
+    )
+   (smallest-coefficient-p N (+ m k) x q))
+  :otf-flg t
+  :hints (("Goal" :cases ((< (MABS (+ (* K X) (* M X)) Q)
+                             (MABS (* M X) Q))))
+          ("Subgoal 2" :use (:instance mabs-plus-lt-reduction
+                                       (q q)
+                                       (n (* M X))
+                                       (p (* K X))))
+          ("Subgoal 1" :in-theory (enable smallest-coefficient-p))
+          ;; Same sign as k
+          ;; ("Subgoal 1.1" :cases ((< n k)))
+          ;; ("Subgoal 1.1.1" :use ((:instance smallest-coefficient-implication
+          ;;                                   (q n)
+          ;;                                   (x x)
+          ;;                                   (p q)
+          ;;                                   (k k)
+          ;;                                   )
+          ;;                        (:instance mabs-plus-lte-reduction
+          ;;                                   (q q)
+          ;;                                   (n (* m x))
+          ;;                                   (p (* k x))
+          ;;                                   )
+          ;;                        ))
           ))
