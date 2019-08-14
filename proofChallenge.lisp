@@ -607,6 +607,42 @@
 
 (in-theory (disable smod))
 
+(defthm mabs-less-than-sum
+  (implies
+   (and
+    (natp kx)
+    (natp ex)
+    (natp mx)
+    (posp q)
+    (not (equal (msign kx q) (msign mx q)))
+    (equal (msign kx q) (msign ex q))
+    (< (mabs kx q) (mabs mx q))
+    (< (mabs ex q) (mabs mx q))
+    (< (mabs kx q) (mabs ex q))
+    )
+   (< (mabs (+ ex mx) q)
+      (mabs (+ kx mx) q)))
+  :hints (("Goal" :in-theory (enable abs mabs msign smod))))
+
+
+(defthm smod-plus-msign-preservation
+  (implies
+   (and
+    (natp k)
+    (natp m)
+    (natp x)
+    (posp q)
+    (< (* 4 (mabs (* m x) q)) q)
+    (< (* 4 (mabs (* k x) q)) q)
+    (not (equal (msign (* k x) q)
+                (msign (* m x) q)))
+    (< (mabs (* k x) q) (mabs (* m x) q))
+    )
+   (equal (msign (* (+ m k) x) q)
+          (msign (* m x) q)))
+  :hints (("Goal" :in-theory (enable smod abs mabs))))
+
+#+dag
 (defthm set-of-smallest-coefficients-small-step-1
   (implies
    (and
@@ -626,13 +662,37 @@
     )
    (smallest-coefficient-p N (+ m k) x q))
   :otf-flg t
-  :hints (("Goal" :cases ((< (MABS (+ (* K X) (* M X)) Q)
-                             (MABS (* M X) Q))))
+  :hints (("Goal" :use smod-plus-msign-preservation
+           :cases ((< (MABS (+ (* K X) (* M X)) Q)
+                      (MABS (* M X) Q))))
           ("Subgoal 2" :use (:instance mabs-plus-lt-reduction
                                        (q q)
                                        (n (* M X))
                                        (p (* K X))))
-          ("Subgoal 1" :in-theory (enable smallest-coefficient-p))
+          (and stable-under-simplificationp
+               '(:in-theory (enable smallest-coefficient-p)))
+          (and stable-under-simplificationp
+               '(:cases ((<= n m))))
+          ("Subgoal 1.1" ;;:in-theory (disable smallest-coefficient-p)
+           :use (:instance smallest-coefficient-implication
+                           (q n)
+                           (k m)
+                           (x x)
+                           (p q)
+                           )
+           )
+          (and stable-under-simplificationp
+               '(:cases ((equal (msign (* k x) q) (msign (* (- n m) x) q)))))
+
+          ("Subgoal 1.2.1" ;; (- n m) has same sign as k
+           :use (
+                 (:instance smallest-coefficient-implication
+                            (q (- n m))
+                            (k k)
+                            (x x)
+                            (p q)
+                            )
+                 ))
           ;; Same sign as k
           ;; ("Subgoal 1.1" :cases ((< n k)))
           ;; ("Subgoal 1.1.1" :use ((:instance smallest-coefficient-implication
