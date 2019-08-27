@@ -1,5 +1,151 @@
 (in-package "ACL2")
 
+(encapsulate
+     (
+      ((invertible-p * *) => *)
+      ((inv * *) => *)
+      )
+   
+   (local (defun invertible-p (x p)
+            (declare (ignore x p))
+            nil))
+   
+   (local (defun inv (x p)
+            (declare (ignore x p))            
+            0))
+
+   (defthm integerp-inv
+     (integerp (inv x p)))
+   
+   (defthm modular-inverse
+     (implies
+      (and
+       (integerp x)
+       (natp p)
+       (invertible-p x p))
+      (equal (mod (* (inv x p) x) p)
+             (mod 1 p))))
+   
+   (defthm invertible-inverse
+     (implies
+      (and
+       (integerp x)
+       (natp p)
+       (invertible-p x p))
+      (invertible-p (inv x p) p)))
+
+   #+joe
+   (defthm double-inverse
+     (implies
+      (and
+       (integerp x)
+       (natp p)
+       (invertible-p x p))
+      (equal (mod (inv (inv x p) p) p)
+             (mod x p))))
+
+   )
+
+(encapsulate
+    ()
+
+  (local
+   (encapsulate
+       ()
+
+     (local (include-book "arithmetic-5/top" :dir :system))
+     
+     (defthmd equal-mod-product-reduction-1
+       (implies
+        (and
+         (integerp x)
+         (integerp a)
+         (integerp b)
+         (natp p)
+         (equal (mod a p) (mod b p)))
+        (equal (mod (* x a) p) (mod (* x b) p))))
+
+     (defthm sigh
+       (implies
+        (and
+         (integerp x)
+         (integerp y))
+        (integerp (* x y))))
+     
+     (defthm inv-product-assoc
+       (implies
+        (and
+         (integerp a)
+         (integerp x)
+         (natp p)
+         (invertible-p x p))
+        (equal (mod (* (inv x p) x a) p)
+               (mod a p)))
+       :otf-flg t
+       :hints (("Goal" :in-theory '(modular-inverse)
+                :use (:instance equal-mod-product-reduction-1
+                                (a (* (inv x p) x))
+                                (x a)
+                                (b 1)))
+               (and stable-under-simplificationp
+                    '(:in-theory (current-theory :here)))
+               ))
+
+     ))
+
+  (local
+   (defthmd equal-mod-product-reduction-2
+     (implies
+      (and
+       (integerp x)
+       (integerp a)
+       (integerp b)
+       (invertible-p x p)
+       (natp p)
+       (equal (mod (* x a) p) (mod (* x b) p)))
+      (equal (mod a p) (mod b p)))
+     :hints (("Goal" :in-theory '(inv-product-assoc integerp-inv)
+              :use (:instance equal-mod-product-reduction-1
+                              (a (* x a))
+                              (b (* x b))
+                              (x (inv x p)))))))
+
+  (defthm equal-mod-product-reduction
+    (implies
+     (and
+      (integerp x)
+      (integerp a)
+      (integerp b)
+      (invertible-p x p)
+      (natp p))
+     (equal (equal (mod (* a x) p) (mod (* b x) p))
+            (equal (mod a p) (mod b p))))
+    :hints (("Goal" :in-theory (disable mod)
+             :use (equal-mod-product-reduction-2
+                   equal-mod-product-reduction-1))))
+   
+  )
+
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (defthm mod-rule-1
+    (implies
+     (and
+      (integerp z)
+      (integerp r)
+      (integerp p))
+     (equal (mod (+ z (- (* p r))) p)
+            (mod z p))))
+
+  (defthm mod-rule-2
+    (equal (MOD (* X (- Z)) P)
+           (mod (* (- x) z) p)))
+
+  )
+
 (defun posfix (x)
   (if (posp x) x 1))
 
@@ -436,176 +582,7 @@
 
   )
 
-#+joe
-(defthmd rewrite-value
-  (implies
-   (and
-    (equal (smod p q) v)
-    (integerp p)
-    (integerp q)
-    (integerp v)
-    (integerp n)
-    (equal z (smod (+ n v) q))
-    (syntaxp (not (equal z `(smod (+ ,n ,p) ,q)))))
-   (equal (smod (+ n p) q)
-          z)))
-
-#+joe
-(encapsulate
-    ()
-
-  (local (include-book "coi/nary/nary-mod" :dir :system))
-  (local (IN-THEORY (ENABLE NARY::MOD-RULES)))
-  (defthm smod-smod
-    (implies
-     (integerp p)
-     (equal (smod (+ n (smod p q)) q)
-            (smod (+ n p) q)))
-    :hints (("Goal" :in-theory (enable ifix))))
-
-  )
-
-#+joe
-(defthm negative-lower-bounds
-  (implies
-   (and
-    (< (smod n q) 0)
-    (natp q))
-   (< (- q) (* 2 (smod n q))))
-  :hints (("Goal" :in-theory (enable posfix)))
-  :rule-classes (:linear
-                 (:forward-chaining :trigger-terms ((smod n q)))))
-
-#+joe
-(defthm positive-upper-bounds
-  (implies
-   (and
-    (< 0 (smod n q))
-    (natp q))
-   (and
-    (< (smod n q) q)
-    (<= (* 2 (smod n q)) q)))
-  :hints (("Goal" :in-theory (enable posfix)))
-  :rule-classes (:linear
-                 (:forward-chaining :trigger-terms ((smod n q)))))
-  
-#+joe
-(defthm alt-smod-fact
-  (IMPLIES (AND (INTEGERP Q)
-                (< 0 Q)
-                (INTEGERP N)
-                (INTEGERP P)
-                (< (SMOD (+ N P) Q) 0)
-                (< (SMOD N Q) 0)
-                (< (SMOD P Q) 0))
-           (< (SMOD (+ N P) Q) (SMOD N Q)))
-  :rule-classes (:linear))
-
-#+joe
-(defthm same-msign-less-than-reduction
-  (implies
-   (and
-    (posp q)
-    (integerp n)
-    (integerp p)
-    )
-   (iff (and (< (mabs (+ n p) q) (mabs n q))
-             (equal (msign (+ n p) q) (msign n q)))
-        (if (equal (mabs n q) (mabs p q))
-            (and (equal (+ (mod n q) (mod p q)) q)
-                 (< 0 (mabs n q))
-                 (equal 1 (msign n q)))
-          (and (not (equal (mod p q) 0))
-               (not (equal (msign n q) (msign p q)))
-               (< (mabs p q) (mabs n q))))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (posp abs mabs) (smod)))))
-
-#+joe
-(encapsulate
-    ()
-
-  (local (include-book "arithmetic-5/top" :dir :system))
-  
-  ;; Can you make a smaller value (of the same sign) from n?
-  ;; 
-  
-  ;; So .. it is impossible to make a new value with the
-  ;; same sign except under exceptional conditions.
-  
-  (defthm same-msign-lt-reduction
-    (implies
-     (and
-      (posp q)
-      (integerp n)
-      (integerp p)
-      )
-     (iff (and (< (mabs (+ n p) q) (mabs n q))
-               (equal (msign (+ n p) q) (msign n q)))
-          (if (equal (mabs n q) (mabs p q))
-              (and (equal (+ (mod n q) (mod p q)) q)
-                   (< 0 (mabs n q))
-                   (equal 1 (msign n q)))
-            (and (not (equal (mod p q) 0))
-                 (not (equal (msign n q) (msign p q)))
-                 (< (mabs p q) (mabs n q))))))
-    :rule-classes nil
-    :hints (("Goal" :in-theory (enable posp abs mabs))))
-
-  (defthm standard-differential-reduction
-    (implies
-     (and
-      (posp q)
-      (integerp n)
-      (integerp p)
-      (not (equal (msign n q) (msign p q)))
-      (< (mabs p q) (mabs n q))
-      )
-     (iff (< (mabs (+ n p) q) (mabs n q))
-          (not (equal (mod p q) 0))))
-    :rule-classes nil
-    :hints (("Goal" :in-theory (enable posp mabs abs))))
-
-  )
-
-
-;; How about making values with the opposite sign?
-;; That seems like a challenging part of the proof.
-
-;; Well, for sufficiently small values it is, in fact, not possible.
-
-;; 0..............x..............|
-
-(defun smallest-coefficient-p (q k x p)
-  (implies
-   (and 
-    (equal (msign (* k x) p) 
-           (msign (* q x) p))
-    (< (mabs (* q x) p)
-       (mabs (* k x) p)))
-   (< k q)))
-
-(in-theory (disable smallest-coefficient-p))
-
-(defun-sk smallest-coefficient (k x p)
-  (forall (q) (smallest-coefficient-p (nfix q) (nfix k) (nfix x) (posfix p))))
-
-(in-theory (disable smallest-coefficient))
-
-(defthmd smallest-coefficient-implication
-  (implies
-   (and
-    (natp q)
-    (smallest-coefficient k x p)
-    (natp k)
-    (natp x)
-    (posp p))
-   (smallest-coefficient-p q k x p))
-  :hints (("Goal" :use (:instance smallest-coefficient-necc))))
-
 (local (include-book "arithmetic-5/top" :dir :system))
-
-(in-theory (disable smod))
 
 (defthm mabs-less-than-sum
   (implies
@@ -625,7 +602,7 @@
   :hints (("Goal" :in-theory (enable abs mabs msign smod))))
 
 
-(defthm smod-plus-msign-preservation
+(defthmd smod-plus-msign-preservation
   (implies
    (and
     (natp k)
@@ -642,69 +619,539 @@
           (msign (* m x) q)))
   :hints (("Goal" :in-theory (enable smod abs mabs))))
 
-#+dag
-(defthm set-of-smallest-coefficients-small-step-1
+(defthmd smod-plus-msign-difference
   (implies
    (and
     (natp k)
     (natp m)
     (natp x)
     (posp q)
-    (SMALLEST-COEFFICIENT K X Q)
-    (SMALLEST-COEFFICIENT M X Q)
+    (< (* 4 (mabs (* m x) q)) q)
+    ;;(< (* 4 (mabs (* k x) q)) q)
+    (< (mabs (* (+ m k) x) q) (mabs (* m x) q))
+    )
+   (not (equal (msign (* k x) q)
+               (msign (* m x) q))))
+  :hints (("Goal" :in-theory (enable smod abs mabs))))
+
+(defund sign-smallest-coefficient-p (n k x q)
+  (let ((n (nfix n))
+        (k (nfix k))
+        (x (nfix x))
+        (q (posfix q)))
+    (implies
+     (and
+      (equal (msign (* n x) q)
+             (msign (* k x) q))
+      (< (mabs (* n x) q)
+         (mabs (* k x) q)))
+     (< k n))))
+
+(defun-sk sign-smallest-coefficient (k x q)
+  (forall (n) (sign-smallest-coefficient-p n k x q)))
+
+(in-theory (disable sign-smallest-coefficient))
+
+(defthmd sign-smallest-coefficient-implication
+  (implies
+   (and
+    (natp n)
+    (natp k)
+    (natp x)
+    (posp q)
+    (sign-smallest-coefficient k x q))
+   (sign-smallest-coefficient-p n k x q))
+  :hints (("Goal" :use sign-smallest-coefficient-necc)))
+
+;;
+;;       |< m
+;;       |
+;;       |<m+k
+;;     e>|<m+e = n
+;;     k>|
+;;       |
+;; ------+------
+;;
+;; (n < k) => ((||n|| > ||k||) or (n == m))
+;; (n < m) => ((||n|| > ||m||) or (n == k))
+;;
+(defund smallest-coefficient-pair-p (n k m x q)
+  (let ((n (nfix n))
+        (k (nfix k))
+        (m (nfix m))
+        (x (nfix x))
+        (q (posfix q)))
+    (implies
+     (and (not (equal (smod (* n x) q) 0))
+          (< (mabs (* n x) q) (+ (mabs (* k x) q) (mabs (* m x) q))))
+     (and (implies (equal (msign (* n x) q) (msign (* k x) q)) (< k n))
+          (implies (equal (msign (* n x) q) (msign (* m x) q)) (< m n))))))
+
+(defun-sk smallest-coefficient-pair (k m x q)
+  (forall (n) (smallest-coefficient-pair-p n k m x q)))
+
+(in-theory (disable smallest-coefficient-pair))
+
+(defthmd smallest-coefficient-pair-implication
+  (implies
+   (and
+    (natp n)
+    (natp k)
+    (natp m)
+    (natp x)
+    (posp q)
+    (smallest-coefficient-pair k m x q))
+   (smallest-coefficient-pair-p n k m x q))
+  :hints (("Goal" :use smallest-coefficient-pair-necc)))
+
+(defthm smod-commutes-plus-small
+  (implies
+   (and
+    (integerp a)
+    (integerp b)
+    (posp q)
+    (< (* 4 (mabs a q)) q)
+    (< (* 4 (mabs b q)) q))
+   (equal (smod (+ a b) q)
+          (+ (smod a q)
+             (smod b q))))
+  :hints (("Goal" :in-theory (enable abs mabs))))
+
+(defthm smod-commutes-plus-different
+  (implies
+   (and
+    (integerp a)
+    (integerp b)
+    (posp q)
+    (not (equal (msign a q) (msign b q))))
+   (equal (smod (+ a b) q)
+          (+ (smod a q)
+             (smod b q))))
+  :hints (("Goal" :in-theory (enable abs mabs))))
+
+(defthm smod-commutes-multiplication
+  (implies
+   (and
+    (integerp a)
+    (posp q)
+    (force (< (* 4 (mabs a q)) q)))
+   (equal (smod (* 2 a) q)
+          (+ (smod a q)
+             (smod a q))))
+  :hints (("Goal" :use (:instance smod-commutes-plus-small
+                                  (b a)))
+           ))
+
+(defthm smod-commutes-negation
+  (implies
+   (and
+    (posp q)
+    (integerp a)
+    )
+   (equal (smod (- a) q)
+          (if (equal (* 2 (mabs a q)) q) (smod a q)
+            (- (smod a q)))))
+  :hints (("Goal" :in-theory (enable mabs abs))))
+
+(in-theory (disable smod))
+
+(defun delta (n m)
+  (- (ifix n) (ifix m)))
+
+(defthm integerp-delta
+  (integerp (delta n m))
+  :rule-classes ((:forward-chaining :trigger-terms ((delta n m)))))
+
+(defthm linear-delta
+  (implies
+   (and
+    (integerp m)
+    (integerp n)
+    (<= 0 m)
+    (< m n))
+   (and (< 0 (delta n m))
+        (<= (delta n m) n)))
+  :rule-classes (:linear))
+
+(in-theory (disable delta))
+
+(defun ith (n x)
+  (if (not (consp x)) nil
+    (if (zp n) (car x)
+      (ith (1- n) (cdr x)))))
+
+(defun gspec (id)
+  (let ((spec (ith 1 id)))
+    (and (equal (ith 0 spec) 2)
+         (equal (ith 1 spec) 3))))
+
+(defun not-hide (clause)
+  (if (not (consp clause)) nil
+    (or (equal (ith 0 (car clause)) 'hide)
+        (not-hide (cdr clause)))))
+
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (local
+   (defthmd helper
+     (implies
+      (and
+       (integerp x)
+       (integerp y)
+       (posp q)
+       (equal (mod a q)
+              (mod b q)))
+      (equal (mod (* a x) q)
+             (mod (* b x) q)))))
+     
+  (defthm smod-of-mod
+    (implies
+     (and
+      (integerp x)
+      (integerp y)
+      (posp q))
+     (equal (smod (* x (mod y q)) q)
+            (smod (* x y) q)))
+    :hints (("Goal" :in-theory (enable smod)
+             :use (:instance helper
+                             (x x)
+                             (a (mod y q))
+                             (b y)))))
+  
+  )
+
+(defthm mabs-of-mod
+  (implies
+   (and
+    (integerp x)
+    (integerp y)
+    (posp q))
+   (equal (mabs (* x (mod y q)) q)
+          (mabs (* x y) q)))
+  :hints (("Goal" :in-theory (enable mabs))))
+   
+
+(defthm bound-k-m-above
+  (implies
+   (and
+    (smallest-coefficient-pair k m x q)
+    (not (equal (smod (* k x) q) 0))
+    (not (equal (smod (* m x) q) 0))
+    (not (equal (mod k q) (mod m q)))
+    (natp k)
+    (natp m)
+    (natp x)
+    (posp q)
+    )
+   (and (< k q)
+        (< m q)))
+  :rule-classes nil
+  :otf-flg t
+  :hints (("Goal" :in-theory (enable mabs abs smallest-coefficient-pair-p)
+           :use ((:instance smallest-coefficient-pair-implication
+                            (n (mod m q)))
+                 (:instance smallest-coefficient-pair-implication
+                            (n (mod k q)))))))
+
+(defthm equal-smod-product-reduction
+  (implies
+   (and
+    (posp q)
+    (natp n)
+    (natp x)
+    (invertible-p x q)
+    (natp k))
+   (equal (equal (smod (* n x) q)
+                 (smod (* k x) q))
+          (equal (mod n q)
+                 (mod k q))))
+  :hints (("Goal" :in-theory (e/d (smod) (mod)))))
+ 
+(defthm equal-delta-reduction
+  (implies
+   (and (integerp n)
+        (integerp k))
+   (equal (equal (delta n k) k)
+          (equal n (* 2 k))))
+  :hints (("Goal" :in-theory (enable delta))))
+
+(defstub pred (x) nil)
+
+(encapsulate
+    ()
+
+  (local
+   (defthm equal-smod-zero-mod
+     (implies
+      (and
+       (integerp k)
+       (integerp x)
+       (invertible-p x q)
+       (posp q))
+      (iff (equal (smod (* k x) q) (smod (* 0 x) q))
+           (equal (mod k q) (mod 0 q))))
+     :hints (("Goal" :in-theory (e/d (posfix smod) (mod))
+              :use (:instance equal-mod-product-reduction
+                              (x x)
+                              (a k)
+                              (b 0)
+                              (p q))))))
+
+  (defthmd equal-smod-zero-x
+    (implies
+     (and
+      (integerp k)
+      (integerp x)
+      (invertible-p x q)
+      (posp q))
+     (iff (equal (smod (* k x) q) 0)
+          (equal (mod k q) 0)))
+    :hints (("Goal" :in-theory (enable smod mod)
+             :use equal-smod-zero-mod)))
+
+  )
+
+(include-book "coi/util/good-rewrite-order" :dir :system)
+  
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (defthmd smod-mod-congruence
+    (implies
+     (and
+      (equal (mod n q) (mod m q))
+      (syntaxp (good-rewrite-order n m))
+      (integerp n)
+      (integerp m)
+      (integerp x)
+      (posp q)
+      )
+     (equal (smod (* n x) q)
+            (smod (* m x) q)))
+    :hints (("Goal" :in-theory (enable smod))))
+
+  )
+
+(defthm set-of-smallest-coefficients-small-step-1
+  (implies
+   (and
+    (hide (pred n))
+    (natp k)
+    (natp m)
+    (natp x)
+    (posp q)
+    (invertible-p x q)
+    ;;(sign-smallest-coefficient k x q)
+    ;;(sign-smallest-coefficient m x q)
+    (smallest-coefficient-pair k m x q)
+    (not (equal (mod k q) (mod m q)))
     (< (* 4 (mabs (* m x) q)) q)
     (< (* 4 (mabs (* k x) q)) q)
-    (< (smod (* k x) q) 0)
-    (< 0 (smod (* m x) q))
+    (not (equal (msign (* m x) q) (msign (* k x) q)))
+    ;;(< (smod (* k x) q) 0)
+    ;;(< 0 (smod (* m x) q))
     (natp N)
     ;;
     (< (mabs (* k x) q) (mabs (* m x) q))
     )
-   (smallest-coefficient-p N (+ m k) x q))
+   (smallest-coefficient-pair-p n k (+ m k) x q))
   :otf-flg t
-  :hints (("Goal" :use smod-plus-msign-preservation
-           :cases ((< (MABS (+ (* K X) (* M X)) Q)
-                      (MABS (* M X) Q))))
-          ("Subgoal 2" :use (:instance mabs-plus-lt-reduction
-                                       (q q)
-                                       (n (* M X))
-                                       (p (* K X))))
-          (and stable-under-simplificationp
-               '(:in-theory (enable smallest-coefficient-p)))
-          (and stable-under-simplificationp
-               '(:cases ((<= n m))))
-          ("Subgoal 1.1" ;;:in-theory (disable smallest-coefficient-p)
-           :use (:instance smallest-coefficient-implication
-                           (q n)
-                           (k m)
-                           (x x)
-                           (p q)
-                           )
+  :hints (("Goal" :do-not-induct t :in-theory (enable nfix abs mabs smallest-coefficient-pair-p)
+           :use (
+                 bound-k-m-above
+                 smallest-coefficient-pair-implication)
            )
           (and stable-under-simplificationp
-               '(:cases ((equal (msign (* k x) q) (msign (* (- n m) x) q)))))
-
-          ("Subgoal 1.2.1" ;; (- n m) has same sign as k
-           :use (
-                 (:instance smallest-coefficient-implication
-                            (q (- n m))
-                            (k k)
-                            (x x)
-                            (p q)
-                            )
-                 ))
-          ;; Same sign as k
-          ;; ("Subgoal 1.1" :cases ((< n k)))
-          ;; ("Subgoal 1.1.1" :use ((:instance smallest-coefficient-implication
-          ;;                                   (q n)
-          ;;                                   (x x)
-          ;;                                   (p q)
-          ;;                                   (k k)
-          ;;                                   )
-          ;;                        (:instance mabs-plus-lte-reduction
-          ;;                                   (q q)
-          ;;                                   (n (* m x))
-          ;;                                   (p (* k x))
-          ;;                                   )
-          ;;                        ))
+               '(:use ((:instance smallest-coefficient-pair-implication
+                                  (n (delta n m))))))
+          (and stable-under-simplificationp
+               '(:use ((:instance smallest-coefficient-pair-implication
+                                  (n (delta n k))))))
+          (and stable-under-simplificationp
+               #+joe
+               (not 
+                (and
+                 (equal (ith 0 (ith 1 id)) 2)
+                 (or (equal (ith 1 (ith 1 id)) 20)
+                     (equal (ith 1 (ith 1 id)) 19))))
+               '(:cases ((< n q))
+                        :expand (:free (x) (hide x))
+                        :in-theory (enable smod-mod-congruence
+                                           delta abs mabs)))
+          ;;
+          ;; You have done all you can .. in the case that N = 2k, 
+          ;; you are screwed.
+          ;;
+          ;; Both failure cases in this proof are degenerate values
+          ;; of N: 
+          ;;
+          ;; ((delta n k) = K)
+          ;; - I'm not sure about this one .. 
+          ;;
+          ;; (EQUAL (SMOD (* X (DELTA N K)) Q) 0)
+          ;; - this needs to imply (n != k)
+          ;;
+          #+joe
+          ("Subgoal 2.19" :expand ((delta n k)
+                                   (delta n m))
+           :cases ((< n q)))
+          #+joe
+          ("Subgoal 2.20" ;;:in-theory (enable test2 delta)
+           :cases ((< (+ m k) (* 2 k))))
+          #+joe
+          (and stable-under-simplificationp
+               '(:in-theory (enable test2 delta)))
+          ;;
+          ;;       |
+          ;;       |
+          ;;       |< m
+          ;;       |
+          ;;       |< m+k
+          ;; N=2k >|
+          ;;       |
+          ;;     k>|
+          ;;       |
+          ;; ------+------
+          ;;
+          ;; So what is the problem?  Well, how does 
+          ;;
+          ;; 
+          ;;
+          ;; 0         k     m    N=2k                       Q
+          ;; |---------^-----^----^------------------------^----
+          ;;
+          ;; (IMPLIES (AND (< (SMOD (* X (DELTA (* 2 K) M)) Q) 0)
+          ;;               (<= (+ (SMOD (* M X) Q)
+          ;;                      (SMOD (* X (DELTA (* 2 K) M)) Q))
+          ;;                   (SMOD (* K X) Q))
+          ;;               (< K Q)
+          ;;               (< M Q)
+          ;;               (< M (* 2 K))
+          ;;               (INTEGERP K)
+          ;;               (INTEGERP M)
+          ;;               (INTEGERP X)
+          ;;               (<= 0 X)
+          ;;               (INTEGERP Q)
+          ;;               (< 0 Q)
+          ;;               (INVERTIBLE-P X Q)
+          ;;               (SMALLEST-COEFFICIENT-PAIR K M X Q)
+          ;;               (NOT (EQUAL K M))
+          ;;               (< (* 4 (SMOD (* M X) Q)) Q)
+          ;;               (< (* -4 (SMOD (* K X) Q)) Q)
+          ;;               (< 0 (SMOD (* M X) Q))
+          ;;               (INTEGERP (* 2 K))
+          ;;               (< 0 K)
+          ;;               (< (- (SMOD (* K X) Q))
+          ;;                  (SMOD (* M X) Q))
+          ;;               (NOT (EQUAL (SMOD (* K X) Q) 0))
+          ;;               (<= (SMOD (* K X) Q) 0)
+          ;;               (<= 0 (+ (SMOD (* K X) Q) (SMOD (* M X) Q)))
+          ;;               (< (* -2 (SMOD (* K X) Q))
+          ;;                  (SMOD (* M X) Q)))
+          ;;          (< M K))
           ))
+
+#|
+          ;;
+          (and stable-under-simplificationp
+               (not (gspec id))
+               '(:in-theory (enable delta abs mabs)))
+          (and stable-under-simplificationp
+               (gspec id)
+               '(:cases ((hide 
+                          (rewrite-equiv 
+                           (equal (smod (* n x) q) 
+                                  (+ (smod (* m x) q) (smod (* (delta n m) x) q))))))))
+          (and (not-hide clause)
+               `(:expand (:free (x) (hide x))
+                         :in-theory (enable abs mabs delta)))
+          ;;
+          ;; This subgoal says it is sufficient to be less than 2*|m|
+          ;;
+          ;; ie: the following is implicitly true:
+          ;;
+          ;; (<= (+ (mabs (* m x) q) (mabs (* k x) q)) (mabs (* x (delta n m)) q))
+          ;;
+          ;;       |< 2*m
+          ;;       |
+          ;;     d>|
+          ;;       |< |m|+|k|
+          ;;       |
+          ;;       |
+          ;;       |< m
+          ;;       |
+          ;;       |<m+k
+          ;;       |
+          ;;   m+d>|
+          ;;     k>|
+          ;;       |
+          ;; ------+------
+          ;;
+          ;; Subgoal 2.3.1''
+          ;; (IMPLIES (AND (HIDE (REWRITE-EQUIV (EQUAL (SMOD (* N X) Q)
+          ;;                                           (+ (SMOD (* M X) Q)
+          ;;                                              (SMOD (* (DELTA N M) X) Q)))))
+          ;;               (< (SMOD (* X (DELTA N M)) Q) 0)
+          ;;               (< (+ (SMOD (* M X) Q)
+          ;;                     (SMOD (* X (DELTA N M)) Q))
+          ;;                  0)
+          ;;               (<= (+ (SMOD (* M X) Q)
+          ;;                      (SMOD (* X (DELTA N M)) Q))
+          ;;                   (SMOD (* K X) Q))
+          ;;               (< K N)
+          ;;               (< M N)
+          ;;               (INTEGERP K)
+          ;;               (<= 0 K)
+          ;;               (INTEGERP M)
+          ;;               (<= 0 M)
+          ;;               (INTEGERP X)
+          ;;               (<= 0 X)
+          ;;               (POSP Q)
+          ;;               (SMALLEST-COEFFICIENT-PAIR K M X Q)
+          ;;               (< (* 4 (SMOD (* M X) Q)) Q)
+          ;;               (< (* -4 (SMOD (* K X) Q)) Q)
+          ;;               (< (SMOD (* K X) Q) 0)
+          ;;               (< 0 (SMOD (* M X) Q))
+          ;;               (INTEGERP N)
+          ;;               (<= 0 N)
+          ;;               (< (- (SMOD (* K X) Q))
+          ;;                  (SMOD (* M X) Q))
+          ;;               (NOT (EQUAL N K))
+          ;;               (NOT (EQUAL N (+ K M)))
+          ;;               (<= 0 (+ (SMOD (* K X) Q) (SMOD (* M X) Q)))
+          ;;               (< (- (SMOD (* X (DELTA N M)) Q))
+          ;;                  (* 2 (SMOD (* M X) Q))))
+          ;;          (< (+ K M) N))
+          ;;
+          ;; Seems like we want to talk about |m+d| relative to |k| ..
+          ;;
+          (and stable-under-simplificationp
+               '(:use (:instance smallest-coefficient-pair-implication
+                                 (n (delta n k)))))
+          (and stable-under-simplificationp
+               '(:expand (:free (x) (hide x))
+                         :in-theory (enable delta abs mabs)))
+          ))
+#+joe((
+          (and stable-under-simplificationp
+               `(:cases ((<= (mabs (* x (+ m (delta n m))) q)
+                             (mabs (* x (+ m          k )) q)))))
+          (and stable-under-simplificationp
+               (let ((spec (ith 1 id)))
+                 (and (equal (ith 0 spec) 2)
+                      (equal (ith 1 spec) 3)
+                      (equal (ith 2 spec) 1)
+                      ;;
+                      (equal (ith 4 spec) 1)
+                      ))
+               '(:expand (:Free (x) (hide x))
+                         :in-theory (enable delta abs mabs)))
+          ;;
+          ;;
+          ))
+|#
