@@ -1,130 +1,6 @@
 (in-package "ACL2")
 
-(encapsulate
-     (
-      ((invertible-p * *) => *)
-      ((inv * *) => *)
-      )
-   
-   (local (defun invertible-p (x p)
-            (declare (ignore x p))
-            nil))
-   
-   (local (defun inv (x p)
-            (declare (ignore x p))            
-            0))
-
-   (defthm integerp-inv
-     (integerp (inv x p)))
-   
-   (defthm modular-inverse
-     (implies
-      (and
-       (integerp x)
-       (natp p)
-       (invertible-p x p))
-      (equal (mod (* (inv x p) x) p)
-             (mod 1 p))))
-   
-   (defthm invertible-inverse
-     (implies
-      (and
-       (integerp x)
-       (natp p)
-       (invertible-p x p))
-      (invertible-p (inv x p) p)))
-
-   #+joe
-   (defthm double-inverse
-     (implies
-      (and
-       (integerp x)
-       (natp p)
-       (invertible-p x p))
-      (equal (mod (inv (inv x p) p) p)
-             (mod x p))))
-
-   )
-
-(encapsulate
-    ()
-
-  (local
-   (encapsulate
-       ()
-
-     (local (include-book "arithmetic-5/top" :dir :system))
-     
-     (defthmd equal-mod-product-reduction-1
-       (implies
-        (and
-         (integerp x)
-         (integerp a)
-         (integerp b)
-         (natp p)
-         (equal (mod a p) (mod b p)))
-        (equal (mod (* x a) p) (mod (* x b) p))))
-
-     (defthm sigh
-       (implies
-        (and
-         (integerp x)
-         (integerp y))
-        (integerp (* x y))))
-     
-     (defthm inv-product-assoc
-       (implies
-        (and
-         (integerp a)
-         (integerp x)
-         (natp p)
-         (invertible-p x p))
-        (equal (mod (* (inv x p) x a) p)
-               (mod a p)))
-       :otf-flg t
-       :hints (("Goal" :in-theory '(modular-inverse)
-                :use (:instance equal-mod-product-reduction-1
-                                (a (* (inv x p) x))
-                                (x a)
-                                (b 1)))
-               (and stable-under-simplificationp
-                    '(:in-theory (current-theory :here)))
-               ))
-
-     ))
-
-  (local
-   (defthmd equal-mod-product-reduction-2
-     (implies
-      (and
-       (integerp x)
-       (integerp a)
-       (integerp b)
-       (invertible-p x p)
-       (natp p)
-       (equal (mod (* x a) p) (mod (* x b) p)))
-      (equal (mod a p) (mod b p)))
-     :hints (("Goal" :in-theory '(inv-product-assoc integerp-inv)
-              :use (:instance equal-mod-product-reduction-1
-                              (a (* x a))
-                              (b (* x b))
-                              (x (inv x p)))))))
-
-  (defthm equal-mod-product-reduction
-    (implies
-     (and
-      (integerp x)
-      (integerp a)
-      (integerp b)
-      (invertible-p x p)
-      (natp p))
-     (equal (equal (mod (* a x) p) (mod (* b x) p))
-            (equal (mod a p) (mod b p))))
-    :hints (("Goal" :in-theory (disable mod)
-             :use (equal-mod-product-reduction-2
-                   equal-mod-product-reduction-1))))
-   
-  )
+(include-book "generic-mod-property")
 
 (encapsulate
     ()
@@ -862,7 +738,7 @@
     (posp q)
     (natp n)
     (natp x)
-    (invertible-p x q)
+    (generic-invertible-p x q)
     (natp k))
    (equal (equal (smod (* n x) q)
                  (smod (* k x) q))
@@ -889,12 +765,12 @@
       (and
        (integerp k)
        (integerp x)
-       (invertible-p x q)
+       (generic-invertible-p x q)
        (posp q))
       (iff (equal (smod (* k x) q) (smod (* 0 x) q))
            (equal (mod k q) (mod 0 q))))
      :hints (("Goal" :in-theory (e/d (posfix smod) (mod))
-              :use (:instance equal-mod-product-reduction
+              :use (:instance generic-equal-mod-product-reduction
                               (x x)
                               (a k)
                               (b 0)
@@ -905,7 +781,7 @@
      (and
       (integerp k)
       (integerp x)
-      (invertible-p x q)
+      (generic-invertible-p x q)
       (posp q))
      (iff (equal (smod (* k x) q) 0)
           (equal (mod k q) 0)))
@@ -945,7 +821,7 @@
     (natp m)
     (natp x)
     (posp q)
-    (invertible-p x q)
+    (generic-invertible-p x q)
     ;;(sign-smallest-coefficient k x q)
     ;;(sign-smallest-coefficient m x q)
     (smallest-coefficient-pair k m x q)
