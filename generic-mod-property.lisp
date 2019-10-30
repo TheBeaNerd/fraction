@@ -23,7 +23,9 @@
             0))
 
    (defthm generic-integerp-inv
-     (integerp (generic-inv x p)))
+     (integerp (generic-inv x p))
+     :rule-classes (:rewrite
+                    (:forward-chaining :trigger-terms ((generic-inv x p)))))
    
    (defthm generic-modular-inverse
      (implies
@@ -32,8 +34,8 @@
        (natp p)
        (generic-invertible-p x p))
       (equal (mod (* (generic-inv x p) x) p)
-             (mod 1 p))))
-   
+             1)))
+
    (defthm generic-invertible-inverse
      (implies
       (and
