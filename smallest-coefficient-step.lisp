@@ -1134,7 +1134,7 @@
        (natp N)
        (< (mabs (* k x) q) (mabs (* m x) q))
        )
-      (smallest-coefficient-pair-p n k (+ m k) x q))
+      (smallest-coefficient-pair-p n k (+ k m) x q))
      :hints (("Goal" :do-not-induct t :in-theory (enable nfix abs mabs smallest-coefficient-pair-p)
               :use (
                     bound-k-m-above
@@ -1173,7 +1173,7 @@
       (not (equal (msign (* m x) q) (msign (* k x) q)))
       (< (mabs (* k x) q) (mabs (* m x) q))
       )
-     (smallest-coefficient-pair k (+ m k) x q))
+     (smallest-coefficient-pair k (+ k m) x q))
     :hints (("Goal" :expand ((:free (x) (hide x))
                              (smallest-coefficient-pair k (+ k m) x q))
              :use (
@@ -1184,3 +1184,23 @@
                    ))))
   
   )
+
+(defthm smallest-coefficients-next-step-commutes
+  (implies
+   (and
+    (natp k)
+    (natp m)
+    (natp x)
+    (posp q)
+    (generic-invertible-p x q)
+    (smallest-coefficient-pair k m x q)
+    (not (equal (msign (* m x) q) (msign (* k x) q)))
+    (< (mabs (* m x) q) (mabs (* k x) q))
+    )
+   (smallest-coefficient-pair (+ k m) m x q))
+  :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-commutes)
+                                  (smallest-coefficients-next-step))
+           :use (:instance smallest-coefficients-next-step
+                           (k m)
+                           (m k)))))
+
