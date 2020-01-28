@@ -551,7 +551,12 @@
 ;; (n < k) => ((||n|| > ||k||) or (n == m))
 ;; (n < m) => ((||n|| > ||m||) or (n == k))
 ;;
+
 (defund smallest-coefficient-pair-p (n k m x q)
+  ;; n : universally quantified variable
+  ;; k/m : coefficients
+  ;; x : original value
+  ;; q : modulus
   (let ((n (nfix n))
         (k (nfix k))
         (m (nfix m))
@@ -560,8 +565,8 @@
     (implies
      (and (not (equal (mod n q) 0)) ;; smod (* n x) q) 0))
           (< (mabs (* n x) q) (+ (mabs (* k x) q) (mabs (* m x) q))))
-     (and (implies (equal (msign (* n x) q) (msign (* k x) q)) (< k n))
-          (implies (equal (msign (* n x) q) (msign (* m x) q)) (< m n))))))
+     (and (implies (equal (msign (* n x) q) (msign (* k x) q)) (<= k n))
+          (implies (equal (msign (* n x) q) (msign (* m x) q)) (<= m n))))))
 
 (defthm smallest-coefficient-pair-p-commutes
   (iff (smallest-coefficient-pair-p n k m x q)
@@ -771,6 +776,17 @@
           (mabs (* x y) q)))
   :hints (("Goal" :in-theory (enable mabs))))
    
+
+(defthm mod-times-zero
+  (implies
+   (and
+    (integerp k)
+    (posp q)
+    (integerp x)
+    (equal (mod k q) 0)
+    )
+   (equal (smod (* k x) q) 0))
+  :hints (("Goal" :in-theory (enable smod))))
 
 (defthm bound-k-m-above
   (implies

@@ -162,15 +162,41 @@
   (if (not (consp xlist)) 0
     (mindelta-1 (car xlist) (car xlist) (cdr xlist))))
 
+;;
+;; Consider the largest number in the list, N = (car xlist) 
+;;
+;; The minimum delta in the list is bounded above by N/(len list)
+;;
+;; 
 (defthm max-mindelta
   (implies
    (and
     (nat-listp xlist)
     (>=listp xlist))
-   (<= (* (len xlist) (mindelta xlist)) (nfix (car xlist))))
+   (<= (* (len xlist) (mindelta xlist)) (car xlist)))
   :hints (("Goal" :use (:instance max-mindelta-1
                                   (min (car xlist))
                                   (x   (car xlist))
                                   (xlist (cdr xlist))
                                   )
            :do-not-induct t)))
+
+;; k: Vk
+;; m: Vm
+
+;; If they are opposite sign, you can add them to get
+;; your result.
+
+;; If they are the same sign, you can subtract them to
+;; induce the 
+
+;; k is less than S but Vk is greater.
+;; m is less than S but vm is greater.
+;; k+m is greater than S but (Vi + Vj) is less.
+;; 
+;; Conclusion: there must be a number (n) between k|m
+;; and k+m such that Vn is less than S
+;;
+;; I think our conclusion is stronger than that because
+;; we only have N/2 (signed/unsigned) open slots.
+;;
