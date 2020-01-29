@@ -22,6 +22,25 @@
             (declare (ignore x p))            
             0))
 
+   ;; ;; I might add these 3 properties here for now.
+   ;; ;; We might be able to prove them ..
+   ;; (defthm generic-invertible-p-product
+   ;;   (implies
+   ;;    (and
+   ;;     (generic-invertible-p a p)
+   ;;     (generic-invertible-p x p))
+   ;;    (generic-invertible-p (* a x) p)))
+   
+   ;; ;; Can we prove this?
+   ;; (defthm generic-invertible-p-congruence
+   ;;   (equal (generic-invertible-p (mod x p) p)
+   ;;          (generic-invertible-p x p)))
+
+   ;; ;; Can we prove this?
+   ;; (defthm generic-inv-congruence
+   ;;   (equal (generic-inv (mod x p) p)
+   ;;          (generic-inv x p)))
+
    (defthm generic-integerp-inv
      (integerp (generic-inv x p))
      :rule-classes (:rewrite
@@ -125,3 +144,14 @@
                    equal-mod-product-reduction-1))))
    
   )
+
+(defthm generic-invertible-p-is-not-zero
+  (implies
+   (and
+    (generic-invertible-p x q)
+    (natp q))
+   (not (equal x 0)))
+  :hints (("Goal" :use (:instance generic-modular-inverse
+                                  (p q))
+           :in-theory (disable generic-modular-inverse)))
+  :rule-classes (:forward-chaining))

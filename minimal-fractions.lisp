@@ -271,76 +271,76 @@
 ;; negative) fraction whose integral components, N and D, are both less
 ;; than or equal to sqrt(M).
 
-(defun good (x y q)
-  (let ((sx (* x x))
-        (sy (* y y)))
-    (if (and (< sx q) (< sy q))
-        (+ sx sy)
-      (+ q sx sy))))
+;; (defun good (x y q)
+;;   (let ((sx (* x x))
+;;         (sy (* y y)))
+;;     (if (and (< sx q) (< sy q))
+;;         (+ sx sy)
+;;       (+ q sx sy))))
 
-(skip-proofs
-(defun min-fraction-rec (k n m p q)
-  (declare (xargs :measure (nfix (+ n p))))
-;;  (prog2$
-;;   (cw "~p0" (list k n m p))
-   (cond
-    ((or (<= n 1)
-         (<= p 1))
-     (if (< (good n k q) (good p m q))
-         (/ (- n) k)
-       (/ p m)))
-    ((< n p)
-     (let ((np (- p n))
-           (nm (+ m k)))
-       (if (< (good p m q) (good np nm q))
-           (if (< (good n k q) (good p m q))
-               (/ (- n) k)
-             (/ p m))
-         (min-fraction-rec k n nm np q))))
-    (t
-     (let ((nn (- n p))
-           (nk (+ k m)))
-       (if (< (good n k q) (good nn nk q))
-           (if (< (good n k q) (good p m q))
-               (/ (- n) k)
-             (/ p m))
-         (min-fraction-rec nk nn m p q))))))
-)
+;; (skip-proofs
+;; (defun min-fraction-rec (k n m p q)
+;;   (declare (xargs :measure (nfix (+ n p))))
+;; ;;  (prog2$
+;; ;;   (cw "~p0" (list k n m p))
+;;    (cond
+;;     ((or (<= n 1)
+;;          (<= p 1))
+;;      (if (< (good n k q) (good p m q))
+;;          (/ (- n) k)
+;;        (/ p m)))
+;;     ((< n p)
+;;      (let ((np (- p n))
+;;            (nm (+ m k)))
+;;        (if (< (good p m q) (good np nm q))
+;;            (if (< (good n k q) (good p m q))
+;;                (/ (- n) k)
+;;              (/ p m))
+;;          (min-fraction-rec k n nm np q))))
+;;     (t
+;;      (let ((nn (- n p))
+;;            (nk (+ k m)))
+;;        (if (< (good n k q) (good nn nk q))
+;;            (if (< (good n k q) (good p m q))
+;;                (/ (- n) k)
+;;              (/ p m))
+;;          (min-fraction-rec nk nn m p q))))))
+;; )
 
-(defun posfix (x)
-  (if (posp x) x 1))
+;; (defun posfix (x)
+;;   (if (posp x) x 1))
 
-(defun smod (v p)
-  (let ((v (ifix v))
-        (p (posfix p)))
-    (let ((x (mod v p)))
-      (if (<= (* 2 x) p) x
-        (- (- p x))))))
+;; (defun smod (v p)
+;;   (let ((v (ifix v))
+;;         (p (posfix p)))
+;;     (let ((x (mod v p)))
+;;       (if (<= (* 2 x) p) x
+;;         (- (- p x))))))
 
-;; So it looks like we could use the following to initialize
-;; the fraction process ..
-(defun min-fraction (v q)
-  (let ((s (smod v q)))
-    (if (< s 0) (min-fraction-rec 1 (- s) 0 q q)
-      (min-fraction-rec 0 q 1 s q))))
+;; ;; So it looks like we could use the following to initialize
+;; ;; the fraction process ..
+;; (defun min-fraction (v q)
+;;   (let ((s (smod v q)))
+;;     (if (< s 0) (min-fraction-rec 1 (- s) 0 q q)
+;;       (min-fraction-rec 0 q 1 s q))))
       
-(defun min-fractions (v q)
-  (if (zp v) nil
-    (cons (min-fraction v q)
-          (min-fractions (1- v) q))))
+;; (defun min-fractions (v q)
+;;   (if (zp v) nil
+;;     (cons (min-fraction v q)
+;;           (min-fractions (1- v) q))))
 
-(defun doit(q)
-  (min-fractions (1- q) q))
+;; (defun doit(q)
+;;   (min-fractions (1- q) q))
 
-(defthm s+-can-be-represented-in-terms-of-s-
-  (implies
-   (and
-    (natp N)
-    (natp s+)
-    (natp s-)
-    (equal s- (1- s+))
-    (< N (* s+ s+))
-    (< (* s- s-) N))
-   (< (- N (* s+ s-)) s+))
-  :rule-classes nil)
+;; (defthm s+-can-be-represented-in-terms-of-s-
+;;   (implies
+;;    (and
+;;     (natp N)
+;;     (natp s+)
+;;     (natp s-)
+;;     (equal s- (1- s+))
+;;     (< N (* s+ s+))
+;;     (< (* s- s-) N))
+;;    (< (- N (* s+ s-)) s+))
+;;   :rule-classes nil)
 
