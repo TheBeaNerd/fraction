@@ -262,19 +262,28 @@
 
   )
 
-dag
-(defthm generic-invertible-mabs
-  (implies
-   (generic-invertible-p x q)
-   (generic-invertible-p (mabs x q) q)))
+;; dag
+;; (defthm mabs-is-either
+;;   (implies
+;;    (and
+;;     (posp q)
+;;     (integerp x))
+;;    (or (equal (mabs x q) (mod x q))
+;;        (equal (mabs x q) (- q (mod x q)))))
+;;   :hints (("Goal" :in-theory (enable abs mabs smod))))
 
-(defthm
-  (implies
-   (generic-invertible-p x q)
-   (posp q)
-   (equal (* 2 (mabs x q)) q))
+;; (defthm generic-invertible-mabs
+;;   (implies
+;;    (generic-invertible-p x q)
+;;    (generic-invertible-p (mabs x q) q)))
+
+;; (defthm
+;;   (implies
+;;    (generic-invertible-p x q)
+;;    (posp q)
+;;    (equal (* 2 (mabs x q)) q))
   
-  (
+;;   (
 
 ;; dag
 

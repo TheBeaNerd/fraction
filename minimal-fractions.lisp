@@ -1,6 +1,7 @@
 (in-package "ACL2")
 
 (include-book "smallest-coefficient-step")
+(include-book "smallest-coefficient-init")
 
 ;; (defun good-coefficient (k q)
 ;;   (and 
@@ -68,7 +69,7 @@
       (let ((km (car list)))
         (let ((k (nfix (car km)))
               (m (nfix (cadr km))))
-          (and (smallest-coefficient-pair k m (nfix x) (posfix q))
+          (and (smallest-coefficient-pair k m x q)
                (all-smallest-coefficient-pair-p (cdr list) x q)))))))
 
 (defthm all-smallest-coefficient-pair-all-minimal-fractions
@@ -85,6 +86,8 @@
    (all-smallest-coefficient-pair-p (all-minimal-pairs k m x q) x q))
   :hints ((and stable-under-simplificationp
                '(:in-theory (enable mabs abs)))))
+
+
 
 (defun strip-k (list)
   (if (not (consp list)) nil
@@ -332,15 +335,15 @@
 ;; (defun doit(q)
 ;;   (min-fractions (1- q) q))
 
-;; (defthm s+-can-be-represented-in-terms-of-s-
-;;   (implies
-;;    (and
-;;     (natp N)
-;;     (natp s+)
-;;     (natp s-)
-;;     (equal s- (1- s+))
-;;     (< N (* s+ s+))
-;;     (< (* s- s-) N))
-;;    (< (- N (* s+ s-)) s+))
-;;   :rule-classes nil)
+(defthm s+-can-be-represented-in-terms-of-s-
+  (implies
+   (and
+    (natp N)
+    (natp s+)
+    (natp s-)
+    (equal s- (1- s+))
+    (< N (* s+ s+))
+    (< (* s- s-) N))
+   (< (- N (* s+ s-)) s+))
+  :rule-classes nil)
 
