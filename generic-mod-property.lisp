@@ -19,9 +19,6 @@
         (< 1 p)))
   :rule-classes (:forward-chaining))
 
-(defun posfix (x)
-  (if (posp x) x 1))
-
 (defun-sk generic-invertible-p (x p)
   (exists (a) (equal (mod (* (ifix a) (ifix x)) (nfix p)) 1)))
 
@@ -78,7 +75,7 @@
   (implies
    (and
     (integerp x)
-    (posp p)
+    (natp p)
     (generic-invertible-p x p))
    (generic-invertible-p (generic-inv x p) p))
   :hints (("Goal" :in-theory (disable mod generic-invertible-p)
@@ -103,6 +100,38 @@
 (in-theory (disable generic-invertible-p))
 (in-theory (disable generic-inv))
                         
+(defthmd generic-invertible-p-mod
+  (implies
+   (and
+    (integerp x)
+    (natp q))
+   (iff (generic-invertible-p (mod x q) q)
+        (generic-invertible-p x q)))
+  :hints (("Subgoal 2" :expand (generic-invertible-p x q)
+           :use (:instance generic-invertible-p-suff
+                           (a (generic-invertible-p-witness x q))
+                           (x (mod x q))
+                           (p q)))
+          ("Subgoal 1" :expand (generic-invertible-p (mod x q) q)
+           :use (:instance generic-invertible-p-suff
+                           (a (generic-invertible-p-witness (mod x q) q))
+                           (x x)
+                           (p q)))
+          ))
+
+
+(defthm generic-invertible-p-negation
+  (implies
+   (and
+    (integerp x)
+    (natp q)
+    (generic-invertible-p x q))
+   (generic-invertible-p (- x) q))
+  :hints (("Goal" :expand (generic-invertible-p x q)
+           :use (:instance generic-invertible-p-suff
+                           (a (- (ifix (GENERIC-INVERTIBLE-P-WITNESS X Q))))
+                           (x (- x))
+                           (p q)))))
 
 #+joe
 (encapsulate
@@ -162,7 +191,7 @@
       (implies
        (and
         (integerp x)
-        (posp p)
+        (natp p)
         (integerp (* (/ p) x)))
        (equal (mod x p) 0))
       :hints (("Goal" :in-theory (enable mod)))))

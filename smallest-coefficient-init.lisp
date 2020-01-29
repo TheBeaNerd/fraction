@@ -160,6 +160,67 @@
                                   ((:type-prescription msign) 
                                    msign)))))
 
+
+(encapsulate
+    ()
+
+  (local
+   (encapsulate
+       ()
+
+     (defthmd generic-invertible-p-mod-rewrite
+       (implies
+        (force 
+         (and
+          (integerp x)
+          (posp q)))
+        (iff (generic-invertible-p (mod x q) q)
+             (generic-invertible-p x q)))
+       :hints (("Goal" :use generic-invertible-p-mod)))
+     
+     (defthm mod-of-modulus
+       (implies
+        (force (and (integerp x) (integerp q)))
+        (equal (MOD (+ Q x) Q)
+               (mod x q))))
+     
+     (defthm mod-negation
+       (implies
+        (and
+         (integerp x)
+         (integerp q))
+        (equal (mod (- (mod x q)) q)
+               (mod (- x) q))))
+     
+     (defthmd generic-invertible-p-mabs-helper
+       (implies
+        (and
+         (integerp x)
+         (posp q)
+         (generic-invertible-p x q))
+        (generic-invertible-p (mod (mabs x q) q) q))
+       :hints (("Goal" :in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))|))
+               (and stable-under-simplificationp
+                    '(:in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))| 
+                                   mod-negation generic-invertible-p-mod-rewrite)))
+               (and stable-under-simplificationp
+                    '(:in-theory (current-theory :here)))))
+     ))
+
+  (defthm generic-invertible-p-mabs
+    (implies
+     (and
+      (integerp x)
+      (posp q)
+      (generic-invertible-p x q))
+     (generic-invertible-p (mabs x q) q))
+    :rule-classes (:rewrite
+                   (:forward-chaining :trigger-terms ((mabs x q))))
+    :hints (("Goal" :use generic-invertible-p-mabs-helper
+             :in-theory (enable generic-invertible-p-mod-rewrite))))
+
+  )
+
 (encapsulate
     ()
 
@@ -262,6 +323,22 @@
 
   )
 
+(defun non-trivial-modulus (p)
+  (and (integerp p)
+       (< 2 p)))
+
+(defthm implies-not-half
+  (implies
+   (and
+    (integerp x)
+    (non-trivial-modulus q)
+    (generic-invertible-p x q))
+   (not (equal (* 2 (mabs x q)) q)))
+  :hints (("Goal" :use (:instance generic-invertible-p-implication-1
+                                  (x (mabs x q))
+                                  (q q)))
+          (and stable-under-simplificationp
+               '(:in-theory (enable mabs abs posfix smod)))))
 
 ;; dag
 ;; (defthm mabs-is-either
