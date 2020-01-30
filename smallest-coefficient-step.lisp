@@ -581,7 +581,7 @@
   :hints (("Goal" :in-theory (enable nfix smallest-coefficient-pair-p))))
 
 (defun-sk smallest-coefficient-pair (k m x q)
-  (forall (n) (smallest-coefficient-pair-p n k m x q)))
+  (forall (n) (smallest-coefficient-pair-p (nfix n) k m x q)))
 
 (defthmd smallest-coefficient-pair-commutes
   (iff (smallest-coefficient-pair k m x q)
@@ -1194,7 +1194,7 @@
                              (smallest-coefficient-pair k (+ k m) x q))
              :use (
                    (:instance set-of-smallest-coefficients-small-step-helper
-                              (n (SMALLEST-COEFFICIENT-PAIR-WITNESS K (+ K M) X Q)))
+                              (n (nfix (SMALLEST-COEFFICIENT-PAIR-WITNESS K (+ K M) X Q))))
                    (:instance set-of-smallest-coefficients-small-step-helper
                               (n 0))
                    ))))

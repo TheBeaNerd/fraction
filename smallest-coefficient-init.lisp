@@ -42,16 +42,16 @@
   (equal (smod 0 c) 0)
   :hints (("Goal" :in-theory (enable smod))))
 
-(defun all-same-sign (n x q)
-  (declare (xargs :measure (posfix n)
+(defun all-same-sign-upto-n (n x q)
+  (declare (xargs :measure (nfix n)
                   :hints (("Goal" :in-theory (enable nfix posfix)))))
-  (let ((n  (posfix n))
+  (let ((n  (nfix n))
         (x  (nfix x))
         (q  (posfix q)))
     (if (equal (* 2 (mabs x q)) q) nil
-      (if (<= n 1) t
+      (if (<= n 0) t
         (and (equal (msign (* n x) q) (msign x q))
-             (all-same-sign (1- n) x q))))))
+             (all-same-sign-upto-n (1- n) x q))))))
 
 ;; (skip-proofs
 ;;  (defthm generic-invertible-p-implies-not-divisible
@@ -80,22 +80,22 @@
 ;;   :hints (("Goal" :in-theory (enable smod))))
 
 (defun smallest-coefficient (n x q)
-  (declare (xargs :measure (nfix (- (posfix q) (posfix n)))
+  (declare (xargs :measure (nfix (- (posfix q) (nfix n)))
                   :hints (("Goal" :in-theory (enable nfix)))))
-  (let ((n (posfix n))
+  (let ((n (nfix n))
         (q (posfix q))
         (x (nfix x)))
-    (let ((n (1+ (posfix n))))
-      (if (< q n) 0
+    (let ((n (1+ n)))
+      (if (<= q n) 0
         (if (not (equal (msign (* n x) q) (msign x q))) n
           (smallest-coefficient n x q))))))
 
-(defthm all-same-sign-are-the-same
+(defthm all-same-sign-upto-n-are-the-same
   (implies
    (and
-    (all-same-sign n x q)
+    (all-same-sign-upto-n n x q)
     (<= c n)
-    (posp n)
+    (natp n)
     (posp q)
     (natp x)
     (posp c))
@@ -104,9 +104,9 @@
 (defthm smallest-coefficient-is-smallest
   (implies
    (and
-    (all-same-sign n x q)
+    (all-same-sign-upto-n n x q)
     (< c (smallest-coefficient n x q))
-    (posp n)
+    (natp n)
     (posp q)
     (natp x)
     (posp c))
@@ -117,15 +117,15 @@
 (defthm smallest-coefficient-is-smallest-instance
   (implies
    (and
-    (< c (smallest-coefficient 1 x q))
+    (< c (smallest-coefficient 0 x q))
     (not (equal (* 2 (mabs x q)) q))
     (posp q)
     (natp x)
     (posp c))
    (equal (msign (* c x) q) (msign x q)))
   :hints (("Goal" :use (:instance smallest-coefficient-is-smallest
-                                  (n 1))
-           :expand (all-same-sign 1 x q)
+                                  (n 0))
+           :expand (all-same-sign-upto-n 0 x q)
            :in-theory (disable smallest-coefficient-is-smallest))))
 
 (defthm positive-smallest-coefficient-changes-sign
@@ -133,7 +133,7 @@
    (and
     (equal (msign (* x (smallest-coefficient n x q)) q)
            (msign x q))
-    (posp n)
+    (natp n)
     (posp q)
     (natp x))
    (equal (smallest-coefficient n x q) 0)))
@@ -141,7 +141,7 @@
 (defthm msign-times-smallest-coefficient
   (implies
    (and
-    (posp n)
+    (natp n)
     (posp q)
     (natp x)
     (< 0 (smallest-coefficient n x q)))
@@ -151,11 +151,11 @@
 (defthm smallest-coefficient-pair-p-1-smallest-coefficient
   (implies
    (and
-    (posp n)
+    (natp n)
     (posp q)
     (natp x)
-    (not (equal (* 2 (mabs x q)) q)))
-   (smallest-coefficient-pair-p n 1 (smallest-coefficient 1 x q) x q))
+    (force (not (equal (* 2 (mabs x q)) q))))
+   (smallest-coefficient-pair-p n 1 (smallest-coefficient 0 x q) x q))
   :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-p) 
                                   ((:type-prescription msign) 
                                    msign)))))
@@ -327,18 +327,36 @@
   (and (integerp p)
        (< 2 p)))
 
+(defthm implies-non-trivial-modulus
+  (implies
+   (and
+    (< 2 p)
+    (integerp p))
+   (non-trivial-modulus p))
+  :rule-classes (:forward-chaining))
+
 (defthm implies-not-half
   (implies
    (and
+    (generic-invertible-p x q)
     (integerp x)
-    (non-trivial-modulus q)
-    (generic-invertible-p x q))
+    (non-trivial-modulus q))
    (not (equal (* 2 (mabs x q)) q)))
   :hints (("Goal" :use (:instance generic-invertible-p-implication-1
                                   (x (mabs x q))
                                   (q q)))
           (and stable-under-simplificationp
-               '(:in-theory (enable mabs abs posfix smod)))))
+               '(:in-theory (enable mabs abs posfix smod))))
+  :rule-classes :forward-chaining)
+
+(defthm smallest-coefficient-pair-1-smallest-coefficient
+  (implies
+   (and
+    (non-trivial-modulus q)
+    (generic-invertible-p x q)
+    (natp x))
+   (smallest-coefficient-pair 1 (smallest-coefficient 0 x q) x q))
+  :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair) (smallest-coefficient mabs)))))
 
 ;; dag
 ;; (defthm mabs-is-either
@@ -365,24 +383,24 @@
 
 ;; dag
 
-;; (defthm all-same-sign-msign-implication
+;; (defthm all-same-sign-upto-n-msign-implication
 ;;   (implies
 ;;    (and
 ;;     (natp x)
 ;;     (natp z)
 ;;     (posp q)
 ;;     (posp c)
-;;     (all-same-sign c x q)
+;;     (all-same-sign-upto-n c x q)
 ;;     (integerp k0)
 ;;     (<= 1 k0)
 ;;     (<= k0 c))
 ;;    (equal (msign (* k0 x) q)
 ;;           (msign x q)))
 ;;   :hints (("Goal" :in-theory (enable posp)
-;;            :induct (all-same-sign c x q))))
+;;            :induct (all-same-sign-upto-n c x q))))
 
-;; (defthm all-same-sign-1
-;;   (equal (all-same-sign 1 x q)
+;; (defthm all-same-sign-upto-n-1
+;;   (equal (all-same-sign-upto-n 1 x q)
 ;;          (not (equal (* 2 (mabs (nfix x) (posfix q))) (posfix q)))))
 
 ;; (defthmd mod-multiplication-commutes
@@ -391,7 +409,7 @@
 ;;     (posp q)
 ;;     (natp x)
 ;;     (natp c)
-;;     (all-same-sign c x q)
+;;     (all-same-sign-upto-n c x q)
 ;;     (force (not (equal (* 2 (mabs x q)) q))))
 ;;    (equal (mod (* c x) q)
 ;;           (if (zp c) 0
@@ -402,9 +420,9 @@
 ;;   :hints (("Goal" :in-theory (disable msign)
 ;;            :do-not-induct t
 ;;            :do-not '(generalize eliminate-destructors)
-;;            :induct (all-same-sign c x q))
+;;            :induct (all-same-sign-upto-n c x q))
 ;;           (and stable-under-simplificationp
-;;                '(:expand (all-same-sign (+ -1 c) x q)))
+;;                '(:expand (all-same-sign-upto-n (+ -1 c) x q)))
 ;;           (and stable-under-simplificationp
 ;;                '(:cases ((equal c 1))))
 ;;           (and stable-under-simplificationp
@@ -415,7 +433,7 @@
 ;;     ()
 
 ;;   (local
-;;    (defthm smod-plus-1-all-same-sign
+;;    (defthm smod-plus-1-all-same-sign-upto-n
 ;;      (implies
 ;;       (and
 ;;        (posp q)
@@ -443,12 +461,12 @@
 ;;       (natp x)
 ;;       (natp c)
 ;;       (not (equal (* 2 (mabs x q)) q))
-;;       (all-same-sign c x q))
+;;       (all-same-sign-upto-n c x q))
 ;;      (equal (smod (* c x) q)
 ;;             (* c (smod x q))))
 ;;     :hints (("Goal" :in-theory (disable msign))
 ;;             (and stable-under-simplificationp
-;;                  '(:expand (all-same-sign (+ -1 c) x q)))
+;;                  '(:expand (all-same-sign-upto-n (+ -1 c) x q)))
 ;;             (and stable-under-simplificationp
 ;;                  '(:cases ((equal c 1))))
 ;;             (and stable-under-simplificationp
@@ -463,7 +481,7 @@
 ;;     (posp q)
 ;;     (natp x)
 ;;     (natp c)
-;;     (all-same-sign c x q)
+;;     (all-same-sign-upto-n c x q)
 ;;     (posp k0)
 ;;     (<= k0 c)
 ;;     (force (not (equal (* 2 (mabs x q)) q))))
@@ -472,7 +490,7 @@
 ;;               (* k0 (mod x q))
 ;;             (if (zp k0) 0
 ;;               (+ q (* k0 (+ (- q) (mod x q))))))))
-;;   :hints (("Goal" :induct (all-same-sign c x q)
+;;   :hints (("Goal" :induct (all-same-sign-upto-n c x q)
 ;;            :in-theory (enable mod-multiplication-commutes)
 ;;            :do-not-induct t
 ;;            :do-not '(generalize eliminate-destructors))))
@@ -483,7 +501,7 @@
 ;;     (posp q)
 ;;     (natp x)
 ;;     (natp c)
-;;     (all-same-sign c x q)
+;;     (all-same-sign-upto-n c x q)
 ;;     (natp k0)
 ;;     (<= k0 c)
 ;;     (force (not (equal (* 2 (mabs x q)) q))))
@@ -496,7 +514,7 @@
 ;;     (posp q)
 ;;     (natp x)
 ;;     (natp c)
-;;     (all-same-sign c x q)
+;;     (all-same-sign-upto-n c x q)
 ;;     (natp k0)
 ;;     (<= k0 c)
 ;;     (force (not (equal (* 2 (mabs x q)) q))))
@@ -505,13 +523,13 @@
 ;;   :hints (("Goal" :do-not-induct t
 ;;            :in-theory (enable abs mabs))))
 
-;; (defthm all-same-sign-multiples-larger-than-x
+;; (defthm all-same-sign-upto-n-multiples-larger-than-x
 ;;   (implies
 ;;    (and
 ;;     (natp c)
 ;;     (natp x)
 ;;     (posp q)
-;;     (all-same-sign c x q)
+;;     (all-same-sign-upto-n c x q)
 ;;     (integerp k0)
 ;;     (< 1 k0)
 ;;     (<= k0 c)
@@ -629,7 +647,7 @@
 ;; ;;        (<= (* D (ndiv N D)) N))
 
 ;; ;; dag
-;; ;; (defun all-same-sign-bound (z c x q)
+;; ;; (defun all-same-sign-upto-n-bound (z c x q)
 ;; ;;   (declare (xargs :measure (nfix c)
 ;; ;;                   :hints (("Goal" :in-theory (enable nfix posfix)))))
 ;; ;;   (let ((z  (nfix z))
@@ -639,7 +657,7 @@
 ;; ;;     (if (equal (* 2 (mabs x q)) q) nil
 ;; ;;       (if (<= c z) t
 ;; ;;         (and (equal (msign (* c x) q) (msign x q))
-;; ;;              (all-same-sign-bound z (1- c) x q))))))
+;; ;;              (all-same-sign-upto-n-bound z (1- c) x q))))))
 
 ;; ;; (defthm checkmate
 ;; ;;   (implies
@@ -671,7 +689,7 @@
 ;; ;;   :hints (("Goal" :induct (ndiv q n)
 ;; ;;            :in-theory (e/d (posfix) ((:definition ndiv))))))
 
-;; ;; (defthm all-same-sign-div-2
+;; ;; (defthm all-same-sign-upto-n-div-2
 ;; ;;   (implies
 ;; ;;    (and
 ;; ;;     (posp q)
@@ -680,8 +698,8 @@
 ;; ;;     (integerp k)
 ;; ;;     (< 1 k)
 ;; ;;     (< (* 2 k) (div q N)))
-;; ;;    (all-same-sign k n q))
-;; ;;   :hints (("Goal" :induct (all-same-sign k n q)
+;; ;;    (all-same-sign-upto-n k n q))
+;; ;;   :hints (("Goal" :induct (all-same-sign-upto-n k n q)
 ;; ;;            :do-not-induct t)))
 
 
@@ -714,14 +732,14 @@
 
 ;; ;; ;; So, because our induction 
 
-;; ;; (defthm all-same-sign-init-k
+;; ;; (defthm all-same-sign-upto-n-init-k
 ;; ;;   (implies
 ;; ;;    (and
 ;; ;;     (natp c)
 ;; ;;     (natp x)
 ;; ;;     (posp q)
-;; ;;     (all-same-sign c x q))
-;; ;;    (all-same-sign (init-k c x q) x q))
+;; ;;     (all-same-sign-upto-n c x q))
+;; ;;    (all-same-sign-upto-n (init-k c x q) x q))
 ;; ;;   :hints (("Goal" :in-theory (disable msign))))
 
 ;; ;; (defthm all-init-k-multiples-larger-than-x
@@ -746,7 +764,7 @@
 ;; ;;       (and (not (equal (msign x q) (msign (* k x) q)))
 ;; ;;            (let ((k (1- k)))
 ;; ;;              (if (equal (msign x q) (msign (* k x) q))
-;; ;;                  (all-same-sign k x q)
+;; ;;                  (all-same-sign-upto-n k x q)
 ;; ;;                (all-different-sign k x q)))))))
 
 ;; ;; (defthm backwards-sum-reduction
@@ -766,14 +784,14 @@
 ;; ;;     ()
   
 ;; ;;   (local
-;; ;;    (defthmd all-same-sign-product-commutes-helper
+;; ;;    (defthmd all-same-sign-upto-n-product-commutes-helper
 ;; ;;      (implies
 ;; ;;       (and
 ;; ;;        (natp k)
 ;; ;;        (natp x)
 ;; ;;        (posp q)
 ;; ;;        (not (equal (msign (* (1+ k) x) q) (msign x q)))
-;; ;;        (all-same-sign k x q))
+;; ;;        (all-same-sign-upto-n k x q))
 ;; ;;       (equal (smod (* (1+ k) x) q)
 ;; ;;              (* (- (msign x q)) (+ q (- (* (1+ k) (mabs x q)))))))
 ;; ;;      :hints (("Goal" :do-not-induct t
@@ -782,17 +800,17 @@
 ;; ;;                   '(:in-theory (enable mabs abs smod MOD-MULTIPLICATION-COMMUTES)))
 ;; ;;              )))
 
-;; ;;   (defthm all-same-sign-product-commutes
+;; ;;   (defthm all-same-sign-upto-n-product-commutes
 ;; ;;     (implies
 ;; ;;      (and
 ;; ;;       (posp k)
 ;; ;;       (natp x)
 ;; ;;       (posp q)
 ;; ;;       (not (equal (msign (* k x) q) (msign x q)))
-;; ;;       (all-same-sign (1- k) x q))
+;; ;;       (all-same-sign-upto-n (1- k) x q))
 ;; ;;      (equal (smod (* k x) q)
 ;; ;;             (* (- (msign x q)) (+ q (- (* k (mabs x q)))))))
-;; ;;     :hints (("Goal" :use (:instance all-same-sign-product-commutes-helper
+;; ;;     :hints (("Goal" :use (:instance all-same-sign-upto-n-product-commutes-helper
 ;; ;;                           (k (1- k))))))
 ;; ;;   )
 
