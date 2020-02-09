@@ -347,3 +347,116 @@
    (< (- N (* s+ s-)) s+))
   :rule-classes nil)
 
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (defun gcdx (n d)
+    (declare (xargs :measure (+ (nfix n) (nfix d))
+                    :hints (("Goal" :in-theory (enable nfix)))))
+    (let ((n (nfix n))
+          (d (nfix d)))
+      (if (< n d) 
+          (if (equal n 0) d
+            (gcdx n (mod d n)))
+        (if (equal d 0) n
+          (gcdx d (mod n d))))))
+
+  )
+
+(defun-sk gcdx-implies-invertible-p ()
+  (forall (x q) 
+    (implies
+     (equal (gcdx x q) 1)
+     (generic-invertible-p x q))))
+
+(defthm invertible-p-from-gcdx
+  (implies
+   (and
+    (gcdx-implies-invertible-p)
+    (equal (gcdx x q) 1))
+   (generic-invertible-p x q))
+  :hints (("Goal" :use gcdx-implies-invertible-p-necc))
+  :rule-classes (:forward-chaining))
+
+(defun mag (n d)
+  (max n d))
+
+(defun element (n1 d1 n2 d2)
+  (list (list* n1 d1 (mag (abs n1) d1)) (list* n2 d2 (mag (abs n2) d2))))
+
+(include-book "coi/defung/defung" :dir :system)
+
+(def::ung minimal-fraction-list-rec (k m x q)
+  (declare (xargs :default-value (element 1 x 1 x)))
+  (let ((n (- (smod (* k x) q)))
+        (p (smod (* m x) q)))
+    (let ((element (element (- n) k p m)))
+      (if (or (equal n 0) (equal p 0)) nil
+        (if (< n p)
+            (let ((nm (+ k m)))
+              (cons element (minimal-fraction-list-rec k nm x q)))
+          (let ((nk (+ k m)))
+            (cons element (minimal-fraction-list-rec nk m x q))))))))
+
+(defun minimal-fraction-list (x q)
+  (let ((g (gcdx x q)))
+    (if (not (equal g 1)) (list (element 0 1 0 1))
+      (let ((x (smod x q)))
+        (if (or (equal x 0) (equal x 1) (equal x -1)) (list (element x 1 x 1))
+          (let ((c (smallest-coefficient 0 (mod x q) q)))
+            (met ((k m x) (if (< x 0) (mv 1 c (+ q x)) (mv c 1 x)))
+              (minimal-fraction-list-rec k m x q))))))))
+
+(defun minimal-fractions-list-rec (x q)
+  (if (zp x) nil
+    (let ((zed (minimal-fraction-list x q)))
+      (cons zed (minimal-fractions-list-rec (1- x) q)))))
+
+(defun minimal-fractions-list (q)
+  (minimal-fractions-list-rec (1- q) q))
+
+(def::ung minimal-fraction-rec (k m x q)
+  (declare (xargs :default-value (mvlist x 1)))
+  (let ((n (- (smod (* k x) q)))
+        (p (smod (* m x) q)))
+    (cond
+     ((< n p)
+      (let ((nm (+ k m)))
+        (if (< (mag  p m)
+               (mag (smod (* nm x) q) nm))
+            (if (< (mag n k) (mag p m))
+                (mvlist (- n) k)
+              (if (< (mag p m) (mag n k))
+                  (mvlist p m)
+                (if (< m k) (mvlist p m) (mvlist (- n) k))))
+          (minimal-fraction-rec k nm x q))))
+     (t
+      (let ((nk (+ k m)))
+        (if (< (mag  n k)
+               (mag (- (smod (* nk x) q)) nk))
+            (if (< (mag p m) (mag n k))
+                (mvlist p m)
+              (if (< (mag n k) (mag p m))
+                  (mvlist (- n) k)
+                (if (< m k) (mvlist p m) (mvlist (- n) k))))
+          (minimal-fraction-rec nk m x q)))))))
+
+(defun minimal-fraction (x q)
+  (let ((g (gcdx x q)))
+    (if (not (equal g 1)) (mv 0 1)
+      (let ((x (smod x q)))
+        (if (or (equal x 0) (equal x 1) (equal x -1)) (mv x 1)
+          (let ((c (smallest-coefficient 0 (mod x q) q)))
+            (met ((k m x) (if (<= x 0) (mv 1 c (+ q x)) (mv c 1 x)))
+              (metlist ((n d) (minimal-fraction-rec k m x q))
+                (mv n d)))))))))
+
+(defun minimal-fractions-rec (x q)
+  (if (zp x) nil
+    (met ((n d) (minimal-fraction x q))
+      (cons (/ n d) (minimal-fractions-rec (1- x) q)))))
+
+(defun minimal-fractions (q)
+  (minimal-fractions-rec (1- q) q))
