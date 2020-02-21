@@ -7,5 +7,5 @@ representations.  We say that the fraction N/D is a minimal
 representation of x if no smaller denominator results in a numerator
 less then or equal to N.  We define a function for computing
 fractional representations and prove that it generates minimal
-fractions.  We then prove that every integer has a minimal fractional
+fractions.  We also prove that every integer has a minimal fractional
 representation such that both N and D are less than sqrt(M).

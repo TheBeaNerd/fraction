@@ -1,3 +1,11 @@
+;;
+;; Copyright (C) 2020, David Greve
+;; All rights reserved.
+;;
+;; This software may be modified and distributed under the terms
+;; of the 3-clause BSD license.  See the LICENSE file for details.
+;;
+;;
 (in-package "ACL2")
 
 (include-book "smallest-coefficient-step")
@@ -470,294 +478,186 @@
 (defun minimal-fractions (q)
   (minimal-fractions-rec (1- q) q))
 
+(defun step-minimal-fraction (k n m p)
+  (if (< p (- n))
+      (mv (+ k m) (+ n p) m p)
+    (mv k n (+ k m) (+ n p))))
 
-(defun partition-denominators (d x q)
-  (if (zp d) (mv nil nil)
-    (let ((d (1- d)))
-      (met ((nlist plist) (partition-denominators d x q))
-        (let ((n (smod (* d x) q)))
-          (if (< n 0) (mv (cons d nlist) plist)
-            (mv nlist (cons d plist))))))))
-
-(defthm len-sum
-  (equal (+ (len (mv-nth 0 (partition-denominators d x q)))
-            (len (mv-nth 1 (partition-denominators d x q))))
-         (nfix d))
-  :hints (("Goal" :in-theory (enable nfix))))
-
-(defthm one-is-largest
-  (or (<= (nfix d) (* 2 (len (mv-nth 0 (partition-denominators d x q)))))
-      (<= (nfix d) (* 2 (len (mv-nth 1 (partition-denominators d x q))))))
-  :hints (("Goal" :do-not-induct t
-           :use len-sum)))
-
-(defun min-value (xlist)
-  (if (not (consp xlist)) 0
-    (if (not (consp (cdr xlist))) (car xlist)
-      (let ((m (min-value (cdr xlist))))
-        (min (car xlist) m)))))
-      
-(defun max-value (xlist)
-  (if (not (consp xlist)) 0
-    (if (not (consp (cdr xlist))) (car xlist)
-      (let ((m (max-value (cdr xlist))))
-        (max (car xlist) m)))))
-
-(defstub min-delta (xlist) nil)
-
-(defthm
-  (equal (m2 (<-sort list))
-         (min-delta list)))
-
-(skip-proofs
- (defthmd max-delta
-   (implies
-    (nat-listp xlist)
-    (<= (* (len xlist) (min (min-value xlist) (min-delta xlist))) (max-value xlist))))
- )
-
-(defun mabs-values (dlist x q)
-  (if (not (consp dlist)) nil
-    (cons (mabs (* (car dlist) x) q)
-          (mabs-values (cdr dlist) x q))))
-
-(defun lte-halfp (xlist q)
-  (if (not (consp xlist)) t
-    (and (<= (* 2 (car xlist)) q)
-         (lte-halfp (cdr xlist) q))))
-
-(include-book "arithmetic-5/top" :dir :system)
-
-(defthm lte-halfp-mabs-values
-  (implies
-   (posp q)
-   (lte-halfp (mabs-values dlist x q) q))
-  :hints (("Goal" :in-theory (enable abs mabs smod))))
-
-(defthmd lte-halfp-max-value
+(defthmd magnitude-invariant
   (implies
    (and
-    (natp q)
-    (nat-listp xlist)
-    (lte-halfp xlist q))
-   (<= (* 2 (max-value xlist)) q)))
+    (natp k)
+    (integerp n)
+    (< n 0)
+    (natp m)
+    (natp p)
+    (equal (- (* k p) (* m n)) c))
+   (mv-let (k n m p) (step-minimal-fraction k n m p)
+           (equal (- (* k p) (* m n)) c))))
 
-(defthm max-delta-instance
-  (implies
-   (and
-    (natp q)
-    (nat-listp xlist)
-    (lte-halfp xlist q))
-   (<= (* 2 (len xlist) (min (min-value xlist) (min-delta xlist))) q))
-  :hints (("Goal" :do-not-induct t
-           :use (max-delta lte-halfp-max-value))))
+(encapsulate
+    ()
 
-(skip-proofs
-(defthm smod-negative
-  (implies
-   (integerp a)
-   (equal (smod (- a) q)
-          (- (smod a q))))
-  :hints (("Goal" :in-theory (enable smod))))
-)
-(in-theory (disable smod-commutes-negation))
+  (defun lt-sqrt (x q)
+    (< (* x x) q))
+     
+  (local (include-book "arithmetic-5/top" :dir :system))
 
-(defthm re-fix-if
-  (implies
-   (and
-    (posp j)
-    (< j q)
-    (posp q)
-    (integerp x)
-    (generic-invertible-p x q))
-   (iff (IF (< 0 (SMOD (* j x) Q)) a b)
-        (IF (< (SMOD (* J X) Q) 0) b a)))
-  :hints (("Goal" :cases ((equal (smod (* j x) q) 0))
-           :in-theory (enable equal-smod-zero-x))))
+  (local
+   (encapsulate
+       ()
 
-(defthmd test
-  (implies
-   (and
-    (natp x)
-    (posp q)
-    (generic-invertible-p x q)
-    (posp i)
-    (posp j)
-    (< j q)
-    (< i q)
-    (equal (msign (* i x) q)
-           (msign (* j x) q)))
-   (equal (mabs (* (abs (- i j)) x) q)
-          (abs (- (mabs (* i x) q) (mabs (* j x) q)))))
-  :hints (("Goal" :in-theory (enable abs mabs))))
+     (defun num-equal (x y)
+       (equal x y))
+     
+     (defun prod (x y)
+       (* x y))
+     
+     (defthmd magnitude-invariant-helper
+       (implies
+        (and
+         (natp k)
+         (integerp n)
+         (< n 0)
+         (natp m)
+         (natp p)
+         (num-equal (- (prod k p) (prod m n)) c))
+        (mv-let (k n m p) (step-minimal-fraction k n m p)
+                (num-equal (- (prod k p) (prod m n)) c))))
+     
+     (defthm negative-product
+       (equal (- (prod x y))
+              (prod x (- y))))
+     
+     (defthm posp-prod
+       (implies
+        (and
+         (posp x)
+         (posp y))
+        (posp (prod x y))))
+     
+     (defthmd z1
+       (implies
+        (and
+         (natp a)
+         (natp b)
+         (<= (* a a) (* b b)))
+        (<= a b))
+       :hints (("Goal" :nonlinearp t)))
+     
+     (defthmd z2
+       (implies
+        (and
+         (natp a)
+         (natp b)
+         (natp c)
+         (<= a b)
+         (<= a c))
+        (<= (* a a) (* b c)))
+       :hints (("Goal" :nonlinearp t)))
+     
+     (defthm product-of-nlt-sqrt
+       (implies
+        (and
+         (natp x)
+         (natp y)
+         (natp c)
+         (not (lt-sqrt x c))
+         (not (lt-sqrt y c)))
+        (<= c (prod x y)))
+       :hints (("Goal" :use ((:instance z2
+                                        (a c)
+                                        (b (* x x))
+                                        (c (* y y))
+                                        )
+                             (:instance z1
+                                        (a c)
+                                        (b (* x y)))
+                             ))))
 
-(defun delta-sign (i j x q)
-  (sign (- (smod (* (max i j) x) q) (smod (* (min i j) x) q))))
+     (defthm not-num-equal-1
+       (implies
+        (and
+         (posp x)
+         (posp y)
+         (<= c x))
+        (not (num-equal (+ x y) c))))
+     
+     (defthm not-num-equal-2
+       (implies
+        (and
+         (posp x)
+         (posp y)
+         (<= c y))
+        (not (num-equal (+ x y) c))))
+     
+     (defthm negative-lt-sqrt
+       (implies
+        (< n 0)
+        (equal (lt-sqrt n c)
+               (lt-sqrt (- n) c))))
+     
+     (in-theory (disable prod num-equal lt-sqrt))
+     
+     (defthm one-fraction-lt-sqrt-helper
+       (implies
+        (and
+         (posp k)
+         (integerp n)
+         (< n 0)
+         (posp m)
+         (posp p)
+         (natp c)
+         (not (equal p (- n)))
+         (num-equal (- (prod k p) (prod m n)) c)
+         (lt-sqrt k c)
+         (lt-sqrt m c)
+         (not (lt-sqrt (+ k m) c))
+         (not (lt-sqrt p c))
+         (not (lt-sqrt n c)))
+        nil)
+       :rule-classes nil
+       :hints (("Goal" :use magnitude-invariant-helper)))
 
-(thm
-  (implies
-   (and
-    (natp x)
-    (posp q)
-    (generic-invertible-p x q)
-    (posp i)
-    (posp j)
-    (< i q)
-    (< j q)
-    (equal (msign (* i x) q)
-           (msign (* j x) q))
-    )
-   (equal (msign (* (abs (- i j)) x) q)
-          (delta-sign i j x q)))
-  :hints (("Goal" :in-theory (enable abs msign)))) 
+     (defthm one-fraction-lt-sqrt-h2
+       (implies
+        (and
+         (posp k)
+         (integerp n)
+         (< n 0)
+         (posp m)
+         (posp p)
+         (natp c)
+         (not (equal p (- n)))
+         (num-equal (- (prod k p) (prod m n)) c)
+         (lt-sqrt k c)
+         (lt-sqrt m c)
+         (not (lt-sqrt (+ k m) c)))
+        (or (lt-sqrt p c)
+            (lt-sqrt n c)))
+       :rule-classes nil
+       :hints (("Goal" :use one-fraction-lt-sqrt-helper)))
 
-(defthm
-  
+     ))
 
-;; (equal (* k x) p)
+  (defthm one-fraction-lt-sqrt
+    (implies
+     (and
+      (posp k)
+      (integerp n)
+      (< n 0)
+      (posp m)
+      (posp p)
+      (natp c)
+      (not (equal p (- n)))
+      (equal (- (* k p) (* m n)) c)
+      (lt-sqrt k c)
+      (lt-sqrt m c)
+      (not (lt-sqrt (+ k m) c)))
+     (or (lt-sqrt p c)
+         (lt-sqrt n c)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory '(num-equal prod)
+             :use one-fraction-lt-sqrt-h2)))
 
-;; k = number of elements
-;; If k < s and m < s then one of p or q must be greater than s
-;;
-;; (* k p) = M - (* m q)
-;;
-;; K starts out small, p starts out large
-;; 
-;; (k + m)(p - q) = M - (* m q)
-;;
-;; The product of k and p is less than q.
-;; 
-;; - kq + mp = mq
-;;
-;; mp - kq = mq
-
-;; kp = M - mq
-;;
-;; (k+m)(p-q) = M - mq
-;; kp-kq+mp-mq = M-mq
-;; M-mq-kq+mp=M
-;; -mq-kq+mp = 0
-;; m(p-q) - kq = 0
-;; 
-
-;; (len xlist) is 
-
-#+joe
-(defthm smallest-coefficient-bounds-min-difference
-  (implies
-   (and
-    (natp x)
-    (posp q)
-    (generic-invertible-p x q)
-    (natp d1)
-    (natp d2)
-    ;;(< d1 q)
-    ;;(< d2 q)
-    (not (equal (msign (* d1 x) q)
-                (msign (* d2 x) q)))
-    (smallest-coefficient-pair d1 d2 x q)
-    (posp i)
-    (posp j)
-    (< i q)
-    (< j q)
-    (equal (msign (* i x) q)
-           (msign (* j x) q))
-    (not (equal i j))
-    #+joe
-    (or (and (equal (msign (* (abs (- i j)) x) q) (msign (* d1 x) q)) (< (abs (- i j)) d1))
-        (and (equal (msign (* (abs (- i j)) x) q) (msign (* d2 x) q)) (< (abs (- i j)) d2)))
-    #+joe
-    (or (and (equal (msign (* (abs (- i j)) x) q) (msign (* d1 x) q)) (< i d1) (< j d1))
-        (and (equal (msign (* (abs (- i j)) x) q) (msign (* d2 x) q)) (< i d2) (< j d2)))
-    (or (and (equal (delta-sign i j x q) (msign (* d1 x) q)) (< i d1) (< j d1))
-        (and (equal (delta-sign i j x q) (msign (* d2 x) q)) (< i d2) (< j d2)))
-    )
-   (<= (+ (mabs (* d1 x) q) (mabs (* d2 x) q))
-       (mabs (* (abs (- i j)) x) q) ;; (abs (- (mabs (* i x) q) (mabs (* j x) q)))
-       ))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (smallest-coefficient-pair-commutes msign nfix abs mabs SMALLEST-COEFFICIENT-PAIR-P)
-                           (smallest-coefficient-pair-necc
-                            GENERIC-INVERTIBLE-REDUCES-EQUAL-SMOD-0))
-           :use (
-                 (:instance smallest-coefficient-pair-necc
-                            (k d1)
-                            (m d2)
-                            (n (abs (- i j)))
-                            )
-                 
-                 ))
-          ))
-          
-
-;; (defthm
-;;   (implies
-;;    (and
-;;     (natp d1)
-;;     (natp d2)
-;;     (natp x)
-;;     (natp q)
-;;     (smallest-coefficient-pair d1 d2 x q))
-;;    (and (equal (min-value (mv-nth 0 (partition-denominators (+ d1 d2) x q)))
-;;                (if (< (msign (* d1 x) q) 0) (mabs (* d1 x) q) (mabs (* d2 x) q)))
-;;         (equal (min-value (mv-nth 0 (partition-denominators (+ d1 d2) x q)))
-;;                (if (< 0 (msign (* d2 x) q) 0) (mabs (* d2 x) q) (mabs (* d1 x) q))))))
-
-;; ;; If you have 
-
-;; ;; (defun isqrt-rec (x q)
-;; ;;   (declare (xargs :measure (1+ (nfix (- (nfix q) (nfix x))))))
-;; ;;   (let ((x (nfix x))
-;; ;;         (q (nfix q)))
-;; ;;     (if (zp q) 0
-;; ;;       (if (zp x) (isqrt-rec 1 q)
-;; ;;         (let ((nx (1+ x)))
-;; ;;           (if (< q (* nx nx)) x
-;; ;;             (isqrt-rec nx q)))))))
-
-;; ;; (defthm isqrt-property
-;; ;;   (implies
-;; ;;    (and
-;; ;;     (natp x)
-;; ;;     (natp q)
-;; ;;     (<= (* x x) q))
-;; ;;    (<= (* (isqrt-rec x q)
-;; ;;           (isqrt-rec x q)) q)))
-
-;; ;; (defthm isqrt-is-maximal
-;; ;;   (implies
-;; ;;    (and
-;; ;;     (<= (* y y) q)
-;; ;;     (<= y (isqrt-rec x q)))))
-
-;; (defun i-sqrt (q)
-;;   (isqrt-rec 1 q))
-
-;; (defun lt-sqrt (x q)
-;;   (< (* x x) q))
-
-;; (defthm smallest-coefficient-pair-bound
-;;   (and
-;;     (natp d1)
-;;     (natp d2)
-;;     (natp x)
-;;     (natp q)
-;;     (smallest-coefficient-pair d1 d2 x q)
-
-;; (defthm minimal-coefficient-bound
-;;   (implies
-;;    (and
-;;     (natp d1)
-;;     (natp d2)
-;;     (natp x)
-;;     (natp q)
-;;     (smallest-coefficient-pair d1 d2 x q)
-;;     (not (equal (msign (* d1 x) q)
-;;                 (msign (* d2 x) q)))
-;;     (lt-sqrt d1 q)
-;;     (lt-sqrt d2 q)
-;;     (not (lt-sqrt (+ d1 d2) q)))
-;;    (let ((n1 (mabs (* d1 x) q))
-;;          (n2 (mabs (* d2 x) q)))
-;;      (or (< (* n1 n1) q)
-;;          (< (* n2 n2) q)))))
+  )

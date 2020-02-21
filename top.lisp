@@ -6,5 +6,7 @@
 ;; of the 3-clause BSD license.  See the LICENSE file for details.
 ;;
 ;;
-(ld "coi/nary/package.lsp" :dir :system)
-(ld "pigeon-defpkg.lsp")
+(in-package "ACL2")
+
+(include-book "minimal-fractions")
+

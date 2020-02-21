@@ -1,4 +1,6 @@
+#!/usr/bin/env python3
 import math
+import sys
 
 def smod(x,q):
     x = x % q
@@ -23,12 +25,46 @@ def quotients(x,q):
     else:
         return (res,mx)
 
+## m*mx - k*mn = C
+## m*(mx + mn) - (k + m)*mn = C
+## m*mx + m*mn - k*mn - m*mn = C
+## m*mx - k*mn = C
+
+## m*mx + k*mn = C
+## m*mx + a*m*mn = C
+## m(mx + a*mn) = C
+## mx + a*mn = C/m
+## make a >= 1
+## as mn gets smaller, mx gets bigger faster
+## 
+## m + am = s+
+## m(1+a) = s+
+## m = s+/(1+a)
+## 
+## can both mx and mn be greater than s- ?
+## mx(1 + a*b) = C/m
+## mx = 
+
+## m*mx <= Q/2 or k*mn <= Q/2
+
+## m*P + k*R <= Q
+## P + R = m
+## P = m - R
+##
+## m*(m - R) + a*m*R <= Q
+## mm - mR + a*m*R <= Q
+## mm + (a-1)*R <= Q
+##
+## R <= (Q - mm)/(a-1)
+
 def fracs(x,q):
     mn = smod(x,q)
     m  = 1
     mx = q if mn < 0 else -q
+    s  = 1 if mn < 0 else -1
     k  = 0
     while (mx != 0 and mn != 0):
+        #print("{} {} {} {} : {}".format(mn,m,mx,k,s*(m*mx-k*mn)))
         if (((mx * mx) < q) and ((k * k) < q)):
             return (mx,k)
         if (((mn * mn) < q) and ((m * m) < q)):
@@ -43,6 +79,7 @@ def defrac(p):
     for v in range(1,p):
         (n,d) = fracs(v,p)
         print("{} : {}/{}".format(v,n,d))
+    return 0
 
 def dequote(p):
     for v in range(1,p):
@@ -98,3 +135,5 @@ def follow(f1,f2):
         print("{} {}".format(index,acc/p))
     return miss
 
+if __name__ == "__main__":
+    sys.exit(defrac(17))
