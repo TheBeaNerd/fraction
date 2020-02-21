@@ -611,6 +611,36 @@
           (delta-sign i j x q)))
   :hints (("Goal" :in-theory (enable abs msign)))) 
 
+(defthm
+  
+
+;; (equal (* k x) p)
+
+;; k = number of elements
+;; If k < s and m < s then one of p or q must be greater than s
+;;
+;; (* k p) = M - (* m q)
+;;
+;; K starts out small, p starts out large
+;; 
+;; (k + m)(p - q) = M - (* m q)
+;;
+;; The product of k and p is less than q.
+;; 
+;; - kq + mp = mq
+;;
+;; mp - kq = mq
+
+;; kp = M - mq
+;;
+;; (k+m)(p-q) = M - mq
+;; kp-kq+mp-mq = M-mq
+;; M-mq-kq+mp=M
+;; -mq-kq+mp = 0
+;; m(p-q) - kq = 0
+;; 
+
+;; (len xlist) is 
 
 #+joe
 (defthm smallest-coefficient-bounds-min-difference
