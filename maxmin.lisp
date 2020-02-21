@@ -408,7 +408,35 @@
           (let ((index (md-index (>=order list))))
             (md-pair index (1+ index) (>=order list))))))
 
+;; (defun >=sort (list)
+;;   (if (not (consp list)) nil
+;;     (>=insert (car list) (>=sort (cdr list)))))
 
+;; (defun min-delta-v (list)
+;;   (if (not (consp list)) 0
+;;     (if (not (consp (cdr list))) (car list)
+;;       (let ((res (min-delta-v (cdr list))))
+;;         (min (abs (- (car list) (cadr list))) res)))))
+
+;; (defun min-seq (list)
+;;   (if (not (consp list)) 0
+;;     (if (not (consp (cdr list))) (car list)
+;;       (min (- (car list) (cadr list))
+;;            (min-seq (cdr list))))))
+
+;; (defthm min-delta-v-is-min-seq-sort
+;;   (implies
+;;    (nat-listp list)
+;;    (equal (min-delta-v list)
+;;           (min-seq (>=sort list)))))
+ 
+;; It looks like we just need something like:
+;;(implies
+;; (and
+;;  (sorted-p list)
+;;  (equal (min-seq (>=insert x list))
+;;         (min (min-seq list)
+;;              (min-delta x list)))))
 
 ;;dag
 ;; (defun zp-value-index (value list)
