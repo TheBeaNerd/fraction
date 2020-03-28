@@ -19,8 +19,61 @@
         (< 1 p)))
   :rule-classes (:forward-chaining))
 
+(include-book "coi/quantification/quantified-congruence" :dir :system)
+
+(defun ifix-equiv (x y)
+  (equal (ifix x) (ifix y)))
+
+(defequiv ifix-equiv)
+
+(defun nfix-equiv (x y)
+  (equal (nfix x) (nfix y)))
+
+(defequiv nfix-equiv)
+
+(defun generic-invertible-predicate (a x p)
+  (equal (mod (* (ifix a) (ifix x)) (nfix p)) 1))
+
+(defcong ifix-equiv equal (generic-invertible-predicate a x p) 1)
+(defcong ifix-equiv equal (generic-invertible-predicate a x p) 2)
+(defcong nfix-equiv equal (generic-invertible-predicate a x p) 3)
+
+(in-theory (disable ifix-equiv nfix-equiv))
+
 (defun-sk generic-invertible-p (x p)
-  (exists (a) (equal (mod (* (ifix a) (ifix x)) (nfix p)) 1)))
+  (exists (a) (generic-invertible-predicate a x p))
+  :strengthen t)
+
+(encapsulate
+    ()
+
+  (local (in-theory (disable nth generic-invertible-predicate)))
+
+  (quant::congruence generic-invertible-p (x p)
+   (exists (a) (generic-invertible-predicate a x p))
+   :hyps (lambda (x1 p1 x2 p2) (and (ifix-equiv x1 x2) (nfix-equiv p1 p2))))
+
+  (defcong ifix-equiv iff (generic-invertible-p x p) 1
+    :hints (("Goal" :use (:instance generic-invertible-p-congruence
+                                    (x1 x-equiv)
+                                    (p1 p)
+                                    ))))
+  
+  (defcong nfix-equiv iff (generic-invertible-p x p) 2
+    :hints (("Goal" :use (:instance generic-invertible-p-congruence
+                                    (x1 x)
+                                    (p1 p-equiv)
+                                    ))))
+  
+  )
+
+(defthm zero-not-invertible
+  (not (generic-invertible-p 0 p)))
+
+(defthm non-integer-not-invertible
+  (implies
+   (not (integerp x))
+   (not (generic-invertible-p x p))))
 
 (defthm proving-invertibility
   (implies
@@ -100,25 +153,75 @@
 (in-theory (disable generic-invertible-p))
 (in-theory (disable generic-inv))
                         
+(defthm ifix-equiv-mod-zero
+  (implies
+   (and (not (integerp x))
+        (integerp q))
+   (ifix-equiv (mod x q) 0))
+  :hints (("Goal" :in-theory (enable ifix-equiv))))
+
 (defthmd generic-invertible-p-mod
   (implies
-   (and
-    (integerp x)
-    (natp q))
+   (natp q)
    (iff (generic-invertible-p (mod x q) q)
         (generic-invertible-p x q)))
   :hints (("Subgoal 2" :expand (generic-invertible-p x q)
+           :cases ((integerp x))
            :use (:instance generic-invertible-p-suff
                            (a (generic-invertible-p-witness x q))
                            (x (mod x q))
                            (p q)))
           ("Subgoal 1" :expand (generic-invertible-p (mod x q) q)
+           :cases ((integerp x))
            :use (:instance generic-invertible-p-suff
                            (a (generic-invertible-p-witness (mod x q) q))
                            (x x)
                            (p q)))
           ))
 
+(defthmd generic-invertible-p-mod-helper
+  (implies
+   (and
+    (natp q)
+    (equal y (mod x q)))
+   (iff (generic-invertible-p y q)
+        (generic-invertible-p x q)))
+  :hints (("Goal" :in-theory nil
+           :use generic-invertible-p-mod)))
+
+(defthm mod-mod
+  (implies
+   (and (integerp x) (integerp q))
+   (equal (mod (mod x q) q)
+          (mod x q))))
+
+(include-book "coi/nary/nary-mod" :dir :system)
+
+(defthmd generic-invertible-p-mod-congruence
+  (implies
+   (and
+    (natp q)
+    (nary::bind-context
+     (equal z (mod x q))))
+   (iff (generic-invertible-p x q)
+        (generic-invertible-p z q)))
+  :otf-flg t
+  :hints (("Goal" :cases ((integerp x))
+           :in-theory '(NARY::OPEN-MOD-EQUIV-IN-CONCLUSION
+                        IFIX-EQUIV-IMPLIES-EQUAL-GENERIC-INVERTIBLE-PREDICATE-2
+                        non-integer-not-invertible
+                        INTEGERP-MOD-1
+                        natp
+                        mod-mod
+                        ifix-equiv-mod-zero
+                        )
+           :use ((:instance generic-invertible-p-mod-helper
+                            (x (mod x q))
+                            (y (mod z q)))
+                 (:instance generic-invertible-p-mod
+                            (x x))
+                 (:instance generic-invertible-p-mod
+                            (x z))))))
 
 (defthm generic-invertible-p-negation
   (implies

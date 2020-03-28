@@ -219,8 +219,7 @@
                  (:forward-chaining :trigger-terms ((smod v p)))))
 
 (defun sign (x)
-  (if (equal (ifix x) 0) 0
-    (if (< (ifix x) 0) -1 1)))
+  (if (< (ifix x) 0) -1 1))
   
 (defun msign (v p)
   (sign (smod v p)))
@@ -646,13 +645,12 @@
 
   (local (include-book "arithmetic-5/top" :dir :system))
 
-  (defthmd smod-commutes-plus-different
+  (defthmd smod-plus
     (implies
      (and
       (integerp a)
       (integerp b)
       (posp q))
-     ;; (not (equal (msign a q) (msign b q))))
      (equal (smod (+ a b) q)
             (if (not (equal (msign a q) (msign b q)))
                 (+ (smod a q)
@@ -661,13 +659,19 @@
               ;; so the result will be negative
               (if (equal (msign a q) (msign (- a) q))
                   (if (equal (msign b q) (msign (- b) q))
-                      0
+                      (if (equal (smod a q) 0)
+                          (smod b q)
+                        (if (equal (smod b q) 0)
+                            (smod a q)
+                          0))
                     (- (smod b q) (smod a q)))
                 (if (equal (msign b q) (msign (- b) q))
                     (- (smod a q) (smod b q))
                   (hide (smod (+ a b) q)))))))
-    :hints (("Goal" :in-theory (enable abs)
-             :expand (hide (smod (+ a b) q)))))
+    :hints (("Goal" :in-theory (disable smod msign))
+            (and stable-under-simplificationp
+                 '(:in-theory (enable abs)
+                              :expand (hide (smod (+ a b) q))))))
 
   )
 
@@ -795,7 +799,7 @@
 (defun delta (n m)
   (- (ifix n) (ifix m)))
 
-(include-book "arithmetic-5/top" :dir :system)
+(local (include-book "arithmetic-5/top" :dir :system))
 
 #+joe
 (defthm times-equal-zero
@@ -808,7 +812,7 @@
         (equal x 0))))
 
 ;; (set-evisc-tuple nil)
-;; :monitor (:rewrite smod-commutes-plus-different) '(:target :go)
+;; :monitor (:rewrite smod-plus) '(:target :go)
 ;; :brr t
 
 (defthm smod-times-mod
@@ -822,7 +826,7 @@
   (equal (smod 0 q) 0)
   :hints (("Goal" :in-theory (enable smod))))
 
-(in-theory (enable equal-smod-zero-x smod-commutes-plus-different))
+(local (in-theory (enable equal-smod-zero-x smod-plus)))
 
 (defthmd smallest-coefficients-next-step-helper
   (implies
