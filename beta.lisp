@@ -508,19 +508,19 @@
   ;;  (encapsulate
   ;;      ()
      
-  ;;    (defthmd half-smod-implies-1
-  ;;      (implies
-  ;;       (and
-  ;;        (generic-invertible-p x q)
-  ;;        (integerp x)
-  ;;        (natp k)
-  ;;        (non-trivial-modulus q)
-  ;;        (<= k q)
-  ;;        (equal (* 2 (smod (* k x) q)) q))
-  ;;       (equal (mod (* 2 k) q) 0))
-  ;;      :otf-flg t
-  ;;      :hints (("Goal" :use (:instance equal-q-implication
-  ;;                                      (a 2)))))
+     ;; (defthmd half-smod-implies-1
+     ;;   (implies
+     ;;    (and
+     ;;     (generic-invertible-p x q)
+     ;;     (integerp x)
+     ;;     (natp k)
+     ;;     (non-trivial-modulus q)
+     ;;     (<= k q)
+     ;;     (equal (* 2 (smod (* k x) q)) q))
+     ;;    (equal (mod (* 2 k) q) 0))
+     ;;   :otf-flg t
+     ;;   :hints (("Goal" :use (:instance equal-q-implication
+     ;;                                   (a 2)))))
 
   ;;    (defthmd open-mod
   ;;      (implies
@@ -824,7 +824,7 @@
 
 (in-theory (enable equal-smod-zero-x smod-commutes-plus-different))
 
-(defthmd set-of-smallest-coefficients-small-step-helper
+(defthmd smallest-coefficients-next-step-helper
   (implies
    (and
     (natp k)
@@ -843,30 +843,56 @@
   :hints (("Goal" :do-not-induct t
            :do-not '(generalize eliminate-destructors)
            :in-theory (enable abs smallest-coefficient-pair-p)
-           :use (
-                 smallest-coefficient-pair-implication
-                 ))
+           :use (smallest-coefficient-pair-implication))
           (and stable-under-simplificationp
                '(:use (:instance smallest-coefficient-pair-implication
                                  (n (delta n m)))))
           (and stable-under-simplificationp
                '(:use (:instance smallest-coefficient-pair-implication
                                  (n (delta n k)))))
-          (and stable-under-simplificationp
-               '(:cases ((equal (* 2 (smod (* k x) q)) q))))
           ))
 
-;; (and stable-under-simplificationp
-;;      '(:cases ((< n q))m
-;;               :expand (:free (x) (hide x))
-;;               :in-theory (enable smod-mod-congruence
-;;                                  delta abs mabs)))
-;; (and stable-under-simplificationp
-;;      '(:cases ((equal (smod (* m x) q) 0))))
-;; (and stable-under-simplificationp
-;;      '(:cases ((equal (smod (* k x) q) 0))))
-;; (and stable-under-simplificationp
-;;      '(:cases ((equal (smod (* n x) q) 0))))
-;; (and stable-under-simplificationp
-;;         '(:cases ((equal (* 2 (mabs (* m x) q)) q))))
-;; ))
+(defthm smallest-coefficients-next-step
+  (implies
+   (and
+    (natp k)
+    (natp m)
+    (natp x)
+    (non-trivial-modulus q)
+    (generic-invertible-p x q)
+    (smallest-coefficient-pair k m x q)
+    (not (equal (msign (* m x) q) (msign (* k x) q)))
+    (< k q)
+    (< m q)
+    (< (mabs (* k x) q) (mabs (* m x) q))
+    )
+   (smallest-coefficient-pair k (+ k m) x q))
+  :hints (("Goal" :expand ((:free (x) (hide x))
+                           (smallest-coefficient-pair k (+ k m) x q))
+           :use (
+                 (:instance smallest-coefficients-next-step-helper
+                            (n (nfix (SMALLEST-COEFFICIENT-PAIR-WITNESS K (+ K M) X Q))))
+                 (:instance smallest-coefficients-next-step-helper
+                            (n 0))
+                 ))))
+
+(defthm smallest-coefficients-next-step-commutes
+  (implies
+   (and
+    (natp k)
+    (natp m)
+    (natp x)
+    (non-trivial-modulus q)
+    (generic-invertible-p x q)
+    (smallest-coefficient-pair k m x q)
+    (not (equal (msign (* m x) q) (msign (* k x) q)))
+    (< k q)
+    (< m q)
+    (< (mabs (* m x) q) (mabs (* k x) q))
+    )
+   (smallest-coefficient-pair (+ k m) m x q))
+  :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-commutes)
+                                  (smallest-coefficients-next-step))
+           :use (:instance smallest-coefficients-next-step
+                           (k m)
+                           (m k)))))
