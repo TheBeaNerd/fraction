@@ -7,6 +7,7 @@
 ;; 
 ;;
 (in-package "ACL2")
+(include-book "coi/util/defun" :dir :system)
 
 (defun invertible-modulus-p (p)
   (and (integerp p)
@@ -26,19 +27,62 @@
 
 (defequiv ifix-equiv)
 
-(defun nfix-equiv (x y)
-  (equal (nfix x) (nfix y)))
+(defun pfix (x)
+  (declare (type t x))
+  (if (posp x) x 1))
 
-(defequiv nfix-equiv)
+(defthm posp-pfix
+  (posp (pfix x))
+  :rule-classes ((:forward-chaining :trigger-terms ((pfix x)))))
+
+(defthm posp-implies
+  (implies
+   (posp x)
+   (and (natp x)
+        (integerp x)
+        (< 0 x)))
+  :rule-classes (:forward-chaining))
+
+(defun pfix-equiv (x y)
+  (equal (pfix x) (pfix y)))
+
+(defequiv pfix-equiv)
+
+(local
+ (encapsulate
+     ()
+
+   (local (include-book "arithmetic-5/top" :dir :system))
+
+   (defthm mod-1
+     (implies
+      (integerp x)
+      (equal (mod x 1) 0)))
+   
+   (defthm mod-of-0
+     (equal (mod 0 x) 0))
+   
+   (defthm times-zero
+     (equal (* 0 x) 0))
+   
+   (defthm mod-mod
+     (implies
+      (and (integerp x) (integerp q))
+      (equal (mod (mod x q) q)
+             (mod x q))))
+   
+   ))
+
+(in-theory (disable mod))
 
 (defun generic-invertible-predicate (a x p)
-  (equal (mod (* (ifix a) (ifix x)) (nfix p)) 1))
+  (equal (mod (* (ifix a) (ifix x)) (pfix p)) 1))
 
 (defcong ifix-equiv equal (generic-invertible-predicate a x p) 1)
 (defcong ifix-equiv equal (generic-invertible-predicate a x p) 2)
-(defcong nfix-equiv equal (generic-invertible-predicate a x p) 3)
+(defcong pfix-equiv equal (generic-invertible-predicate a x p) 3)
 
-(in-theory (disable ifix-equiv nfix-equiv))
+(in-theory (disable ifix-equiv pfix-equiv))
 
 (defun-sk generic-invertible-p (x p)
   (exists (a) (generic-invertible-predicate a x p))
@@ -51,7 +95,7 @@
 
   (quant::congruence generic-invertible-p (x p)
    (exists (a) (generic-invertible-predicate a x p))
-   :hyps (lambda (x1 p1 x2 p2) (and (ifix-equiv x1 x2) (nfix-equiv p1 p2))))
+   :hyps (lambda (x1 p1 x2 p2) (and (ifix-equiv x1 x2) (pfix-equiv p1 p2))))
 
   (defcong ifix-equiv iff (generic-invertible-p x p) 1
     :hints (("Goal" :use (:instance generic-invertible-p-congruence
@@ -59,7 +103,7 @@
                                     (p1 p)
                                     ))))
   
-  (defcong nfix-equiv iff (generic-invertible-p x p) 2
+  (defcong pfix-equiv iff (generic-invertible-p x p) 2
     :hints (("Goal" :use (:instance generic-invertible-p-congruence
                                     (x1 x)
                                     (p1 p-equiv)
@@ -75,13 +119,23 @@
    (not (integerp x))
    (not (generic-invertible-p x p))))
 
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
+  (defthm not-invertible-one
+    (not (generic-invertible-p x 1)))
+
+  )
+
 (defthm proving-invertibility
   (implies
    (and
     (equal (mod (* a x) p) 1)
     (integerp a)
     (integerp x)
-    (natp p))
+    (posp p))
    (generic-invertible-p x p))
   :hints (("Goal" :in-theory (disable mod generic-invertible-p)
            :use generic-invertible-p-suff)))
@@ -94,16 +148,21 @@
   :rule-classes (:rewrite
                  (:forward-chaining :trigger-terms ((generic-inv x p)))))
 
-(local (include-book "arithmetic-5/top" :dir :system))
+(encapsulate
+    ()
 
-(defthm generic-modular-inverse
-  (implies
-   (and
-    (integerp x)
-    (natp p)
-    (generic-invertible-p x p))
-   (equal (mod (* (generic-inv x p) x) p)
-          1)))
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
+  (defthm generic-modular-inverse
+    (implies
+     (and
+      (integerp x)
+      (natp p)
+      (generic-invertible-p x p))
+     (equal (mod (* (generic-inv x p) x) p)
+            1)))
+
+  )
 
 (encapsulate
     ()
@@ -128,7 +187,7 @@
   (implies
    (and
     (integerp x)
-    (natp p)
+    (posp p)
     (generic-invertible-p x p))
    (generic-invertible-p (generic-inv x p) p))
   :hints (("Goal" :in-theory (disable mod generic-invertible-p)
@@ -153,32 +212,40 @@
 (in-theory (disable generic-invertible-p))
 (in-theory (disable generic-inv))
                         
-(defthm ifix-equiv-mod-zero
-  (implies
-   (and (not (integerp x))
-        (integerp q))
-   (ifix-equiv (mod x q) 0))
-  :hints (("Goal" :in-theory (enable ifix-equiv))))
+(encapsulate
+    ()
 
-(defthmd generic-invertible-p-mod
-  (implies
-   (natp q)
-   (iff (generic-invertible-p (mod x q) q)
-        (generic-invertible-p x q)))
-  :hints (("Subgoal 2" :expand (generic-invertible-p x q)
-           :cases ((integerp x))
-           :use (:instance generic-invertible-p-suff
-                           (a (generic-invertible-p-witness x q))
-                           (x (mod x q))
-                           (p q)))
-          ("Subgoal 1" :expand (generic-invertible-p (mod x q) q)
-           :cases ((integerp x))
-           :use (:instance generic-invertible-p-suff
-                           (a (generic-invertible-p-witness (mod x q) q))
-                           (x x)
-                           (p q)))
-          ))
+  (local (include-book "arithmetic-5/top" :dir :system))
 
+  (defthm ifix-equiv-mod-zero
+    (implies
+     (and (not (integerp x))
+          (integerp q))
+     (ifix-equiv (mod x q) 0))
+    :hints (("Goal" :in-theory (enable ifix-equiv))))
+
+  
+  (defthmd generic-invertible-p-mod
+    (implies
+     (natp q)
+     (iff (generic-invertible-p (mod x q) q)
+          (generic-invertible-p x q)))
+    :hints (("Subgoal 2" :expand (generic-invertible-p x q)
+             :cases ((integerp x))
+             :use (:instance generic-invertible-p-suff
+                             (a (generic-invertible-p-witness x q))
+                             (x (mod x q))
+                             (p q)))
+            ("Subgoal 1" :expand (generic-invertible-p (mod x q) q)
+             :cases ((integerp x))
+             :use (:instance generic-invertible-p-suff
+                             (a (generic-invertible-p-witness (mod x q) q))
+                             (x x)
+                             (p q)))
+            ))
+
+  )
+  
 (defthmd generic-invertible-p-mod-helper
   (implies
    (and
@@ -189,53 +256,55 @@
   :hints (("Goal" :in-theory nil
            :use generic-invertible-p-mod)))
 
-(defthm mod-mod
-  (implies
-   (and (integerp x) (integerp q))
-   (equal (mod (mod x q) q)
-          (mod x q))))
-
 (include-book "coi/nary/nary-mod" :dir :system)
 
-(defthmd generic-invertible-p-mod-congruence
-  (implies
-   (and
-    (natp q)
-    (nary::bind-context
-     (equal z (mod x q))))
-   (iff (generic-invertible-p x q)
-        (generic-invertible-p z q)))
-  :otf-flg t
-  :hints (("Goal" :cases ((integerp x))
-           :in-theory '(NARY::OPEN-MOD-EQUIV-IN-CONCLUSION
-                        IFIX-EQUIV-IMPLIES-EQUAL-GENERIC-INVERTIBLE-PREDICATE-2
-                        non-integer-not-invertible
-                        INTEGERP-MOD-1
-                        natp
-                        mod-mod
-                        ifix-equiv-mod-zero
-                        )
-           :use ((:instance generic-invertible-p-mod-helper
-                            (x (mod x q))
-                            (y (mod z q)))
-                 (:instance generic-invertible-p-mod
-                            (x x))
-                 (:instance generic-invertible-p-mod
-                            (x z))))))
+(encapsulate
+    ()
 
-(defthm generic-invertible-p-negation
-  (implies
-   (and
-    (integerp x)
-    (natp q)
-    (generic-invertible-p x q))
-   (generic-invertible-p (- x) q))
-  :hints (("Goal" :expand (generic-invertible-p x q)
-           :use (:instance generic-invertible-p-suff
-                           (a (- (ifix (GENERIC-INVERTIBLE-P-WITNESS X Q))))
-                           (x (- x))
-                           (p q)))))
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
+  (defthmd generic-invertible-p-mod-congruence
+    (implies
+     (and
+      (natp q)
+      (nary::bind-context
+       (equal z (mod x q))))
+     (iff (generic-invertible-p x q)
+          (generic-invertible-p z q)))
+    :otf-flg t
+    :hints (("Goal" :cases ((integerp x))
+             :in-theory '(NARY::OPEN-MOD-EQUIV-IN-CONCLUSION
+                          IFIX-EQUIV-IMPLIES-EQUAL-GENERIC-INVERTIBLE-PREDICATE-2
+                          non-integer-not-invertible
+                          INTEGERP-MOD-1
+                          natp
+                          mod-mod
+                          ifix-equiv-mod-zero
+                          )
+             :use ((:instance generic-invertible-p-mod-helper
+                              (x (mod x q))
+                              (y (mod z q)))
+                   (:instance generic-invertible-p-mod
+                              (x x))
+                   (:instance generic-invertible-p-mod
+                              (x z))))))
 
+  
+  (defthm generic-invertible-p-negation
+    (implies
+     (and
+      (integerp x)
+      (posp q)
+      (generic-invertible-p x q))
+     (generic-invertible-p (- x) q))
+    :hints (("Goal" :expand (generic-invertible-p x q)
+             :use (:instance generic-invertible-p-suff
+                             (a (- (ifix (GENERIC-INVERTIBLE-P-WITNESS X Q))))
+                             (x (- x))
+                             (p q)))))
+
+  )
+  
 #+joe
 (encapsulate
      (
@@ -405,3 +474,45 @@
                                   (p q))
            :in-theory (disable generic-modular-inverse)))
   :rule-classes (:forward-chaining))
+
+(def::un xgcd (k n m d)
+  (declare (xargs :measure (nfix (+ (nfix n) (nfix d)))
+                  :signature ((natp natp natp natp) natp natp natp natp)))
+  (if (zp n) (mv k n m d)
+    (if (zp d) (mv k n m d)
+      (if (< n d)
+          (xgcd k n (+ k m) (- d n))
+        (xgcd (+ k m) (- n d) m d)))))
+
+(def::und inv (x q)
+  (declare (xargs :signature ((natp natp) integerp)))
+  (mv-let (k n m d) (xgcd 1 x 0 q)
+    (if (zp n) (if (equal d 1) (- k m) 0)
+      (if (equal n 1) (- m k) 0))))
+
+(encapsulate
+    ()
+  
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
+  (def::signature mod (integerp posp) natp)
+  
+  (defund invertible-p (x q)
+    (declare (xargs :guard (and (integerp x) (posp q))))
+    (let* ((q (pfix q))
+           (x (mod (ifix x) q)))
+      (equal (mod (* x (inv x q)) q) 1)))
+  
+  )
+
+
+  
+(defthm invertible-implies-generic-invertible-p
+  (implies
+   (invertible-p x q)
+   (generic-invertible-p x q))
+  :hints (("Goal" :in-theory (e/d (nary::mod-rules invertible-p) (mod))
+           :use (:instance generic-invertible-p-suff
+                           (p (pfix q))
+                           (a (INV (MOD X (PFIX Q)) (PFIX Q))))))
+  :rule-classes (:rewrite :forward-chaining))
