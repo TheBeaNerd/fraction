@@ -64,7 +64,7 @@
         (and (equal (msign (* n x) q) (msign x q))
              (all-same-sign-upto-n (1- n) x q))))))
 
-(defun smallest-coefficient (n x q)
+(defun minimal-fraction-init (n x q)
   (declare (xargs :measure (nfix (- (posfix q) (nfix n)))
                   :hints (("Goal" :in-theory (enable nfix)))))
   (let ((n (nfix n))
@@ -73,7 +73,7 @@
     (let ((n (1+ n)))
       (if (<= q n) 0
         (if (not (equal (msign (* n x) q) (msign x q))) n
-          (smallest-coefficient n x q))))))
+          (minimal-fraction-init n x q))))))
 
 (defthm all-same-sign-upto-n-are-the-same
   (implies
@@ -86,17 +86,17 @@
     (posp c))
    (equal (msign (* c x) q) (msign x q))))
 
-(defthm smallest-coefficient-is-smallest
+(defthm minimal-fraction-init-is-smallest
   (implies
    (and
     (all-same-sign-upto-n n x q)
-    (< c (smallest-coefficient n x q))
+    (< c (minimal-fraction-init n x q))
     (natp n)
     (posp q)
     (natp x)
     (posp c))
    (equal (msign (* c x) q) (msign x q)))
-  :hints (("Goal" :induct (smallest-coefficient n x q)
+  :hints (("Goal" :induct (minimal-fraction-init n x q)
            :in-theory (disable msign))))
 
 (encapsulate
@@ -124,47 +124,47 @@
               (smod x q))))
     :hints (("Goal" :in-theory (enable smod))))
 
-  (defthm smallest-coefficient-is-smallest-instance
+  (defthm minimal-fraction-init-is-smallest-instance
     (implies
      (and
-      (< c (smallest-coefficient 0 x q))
+      (< c (minimal-fraction-init 0 x q))
       (posp q)
       (natp x)
       (posp c))
      (equal (msign (* c x) q) (msign x q)))
     :otf-flg t
-    :hints (("Goal" :use (:instance smallest-coefficient-is-smallest
+    :hints (("Goal" :use (:instance minimal-fraction-init-is-smallest
                                     (n 0))
              :expand (all-same-sign-upto-n 0 x q)
-             :in-theory (disable smallest-coefficient-is-smallest))))
+             :in-theory (disable minimal-fraction-init-is-smallest))))
 
-  (defthm positive-smallest-coefficient-changes-sign
+  (defthm positive-minimal-fraction-init-changes-sign
     (implies
      (and
-      (equal (msign (* x (smallest-coefficient n x q)) q)
+      (equal (msign (* x (minimal-fraction-init n x q)) q)
              (msign x q))
       (natp n)
       (posp q)
       (natp x))
-     (equal (smallest-coefficient n x q) 0))
-    :hints (("Goal" :induct (smallest-coefficient n x q))))
+     (equal (minimal-fraction-init n x q) 0))
+    :hints (("Goal" :induct (minimal-fraction-init n x q))))
   
-  (defthm msign-times-smallest-coefficient
+  (defthm msign-times-minimal-fraction-init
     (implies
      (and
       (natp n)
       (posp q)
       (natp x)
       ;;(generic-invertible-p x q)
-      (< 0 (smallest-coefficient n x q)))
-     (equal (msign (* x (smallest-coefficient n x q)) q)
+      (< 0 (minimal-fraction-init n x q)))
+     (equal (msign (* x (minimal-fraction-init n x q)) q)
             (- (msign x q))))
-    :hints (("Goal" :induct (smallest-coefficient n x q)
+    :hints (("Goal" :induct (minimal-fraction-init n x q)
              :do-not-induct t)
             (and stable-under-simplificationp
                  '(:in-theory (enable equal-smod-zero-x smod-plus)))))
   
-  (defthm smallest-coefficient-pair-p-1-smallest-coefficient
+  (defthm smallest-coefficient-pair-p-1-minimal-fraction-init
     (implies
      (and
       (natp n)
@@ -172,7 +172,7 @@
       (natp x)
       ;;(force (not (equal (* 2 (mabs x q)) q)))
       )
-     (smallest-coefficient-pair-p n 1 (smallest-coefficient 0 x q) x q))
+     (smallest-coefficient-pair-p n 1 (minimal-fraction-init 0 x q) x q))
     :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-p) 
                                     ((:type-prescription msign) 
                                      msign)))
@@ -416,14 +416,14 @@
 
   )
 
-(defthm smallest-coefficient-pair-1-smallest-coefficient
+(defthm smallest-coefficient-pair-1-minimal-fraction-init
   (implies
    (and
     (non-trivial-modulus q)
     (generic-invertible-p x q)
     (natp x))
-   (smallest-coefficient-pair 1 (smallest-coefficient 0 x q) x q))
-  :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair) (smallest-coefficient mabs)))))
+   (smallest-coefficient-pair 1 (minimal-fraction-init 0 x q) x q))
+  :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair) (minimal-fraction-init mabs)))))
 
 ;;
 ;; Now .. the grand finale ..

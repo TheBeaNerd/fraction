@@ -424,7 +424,7 @@
     (if (not (equal g 1)) (list (element 0 1 0 1))
       (let ((x (smod x q)))
         (if (or (equal x 0) (equal x 1) (equal x -1)) (list (element x 1 x 1))
-          (let ((c (smallest-coefficient 0 (mod x q) q)))
+          (let ((c (minimal-fraction-init 0 (mod x q) q)))
             (met ((k m x) (if (< x 0) (mv 1 c (+ q x)) (mv c 1 x)))
               (minimal-fraction-list-rec k m x q))))))))
 
@@ -472,7 +472,7 @@
     (if (not (equal g 1)) (mv 0 1)
       (let ((x (smod x q)))
         (if (or (equal x 0) (equal x 1) (equal x -1)) (mv x 1)
-          (let ((c (smallest-coefficient 0 (mod x q) q)))
+          (let ((c (minimal-fraction-init 0 (mod x q) q)))
             (met ((k m x) (if (<= x 0) (mv 1 c (+ q x)) (mv c 1 x)))
               (met ((n d) (minimal-fraction-rec k m x q))
                 (mv n d)))))))))
