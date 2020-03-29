@@ -485,7 +485,7 @@
 (defun minimal-fractions (q)
   (minimal-fractions-rec (1- q) q))
 
-(defun step-minimal-fraction (k n m p)
+(defun step-minimal-fraction-alt (k n m p)
   (if (< p (- n))
       (mv (+ k m) (+ n p) m p)
     (mv k n (+ k m) (+ n p))))
@@ -499,7 +499,7 @@
     (natp m)
     (natp p)
     (equal (- (* k p) (* m n)) c))
-   (mv-let (k n m p) (step-minimal-fraction k n m p)
+   (mv-let (k n m p) (step-minimal-fraction-alt k n m p)
            (equal (- (* k p) (* m n)) c))))
 
 (encapsulate
@@ -529,7 +529,7 @@
          (natp m)
          (natp p)
          (num-equal (- (prod k p) (prod m n)) c))
-        (mv-let (k n m p) (step-minimal-fraction k n m p)
+        (mv-let (k n m p) (step-minimal-fraction-alt k n m p)
                 (num-equal (- (prod k p) (prod m n)) c))))
      
      (defthm negative-product

@@ -204,9 +204,11 @@
   )
 
 (defun posfix (x)
+  (declare (type t x))
   (if (posp x) x 1))
 
-(defun smod (v p)
+(def::un smod (v p)
+  (declare (xargs :signature ((integerp posp) integerp)))
   (let ((v (ifix v))
         (p (posfix p)))
     (let ((x (mod v p)))
@@ -740,7 +742,7 @@
 
   (local (include-book "arithmetic-5/top" :dir :system))
 
-  (defthm smod-commutes-negation
+  (defthm smod-negation
     (implies
      (and
       (posp q)
@@ -799,7 +801,7 @@
 (defun delta (n m)
   (- (ifix n) (ifix m)))
 
-(local (include-book "arithmetic-5/top" :dir :system))
+;; (local (include-book "arithmetic-5/top" :dir :system))
 
 #+joe
 (defthm times-equal-zero
@@ -815,20 +817,136 @@
 ;; :monitor (:rewrite smod-plus) '(:target :go)
 ;; :brr t
 
-(defthm smod-times-mod
-  (implies
-   (and (integerp x) (integerp n) (integerp q))
-   (equal (smod (* x (mod n q)) q)
-          (smod (* x n) q)))
-  :hints (("Goal" :in-theory (enable smod))))
+(encapsulate
+    ()
 
-(defthm smod-zero
-  (equal (smod 0 q) 0)
-  :hints (("Goal" :in-theory (enable smod))))
+  (local (include-book "arithmetic-5/top" :dir :system))
 
-(local (in-theory (enable equal-smod-zero-x smod-plus)))
+  (defthm smod-times-mod
+    (implies
+     (and (integerp x) (integerp n) (integerp q))
+     (equal (smod (* x (mod n q)) q)
+            (smod (* x n) q)))
+    :hints (("Goal" :in-theory (enable smod))))
+  
+  (defthm smod-zero
+    (equal (smod 0 q) 0)
+    :hints (("Goal" :in-theory (enable smod))))
 
-(defthmd smallest-coefficients-next-step-helper
+  (local (in-theory (enable equal-smod-zero-x smod-plus)))
+  
+  (defthmd smallest-coefficients-next-step-helper
+    (implies
+     (and
+      (natp k)
+      (natp m)
+      (natp x)
+      (non-trivial-modulus q)
+      (generic-invertible-p x q)
+      (smallest-coefficient-pair k m x q)
+      (not (equal (msign (* m x) q) (msign (* k x) q)))
+      (natp N)
+      (< k q)
+      (< m q)
+      (<= (mabs (* k x) q) (mabs (* m x) q))
+      )
+     (smallest-coefficient-pair-p n k (+ k m) x q))
+    :hints (("Goal" :do-not-induct t
+             :do-not '(generalize eliminate-destructors)
+             :in-theory (enable abs smallest-coefficient-pair-p)
+             :use (smallest-coefficient-pair-implication))
+            (and stable-under-simplificationp
+                 '(:use (:instance smallest-coefficient-pair-implication
+                                   (n (delta n m)))))
+            (and stable-under-simplificationp
+                 '(:use (:instance smallest-coefficient-pair-implication
+                                   (n (delta n k)))))
+            ))
+
+  (defthm smallest-coefficients-next-step
+    (implies
+     (and
+      (natp k)
+      (natp m)
+      (natp x)
+      (non-trivial-modulus q)
+      (generic-invertible-p x q)
+      (smallest-coefficient-pair k m x q)
+      (not (equal (msign (* m x) q) (msign (* k x) q)))
+      (< k q)
+      (< m q)
+      (<= (mabs (* k x) q) (mabs (* m x) q))
+      )
+     (smallest-coefficient-pair k (+ k m) x q))
+    :hints (("Goal" :expand ((:free (x) (hide x))
+                             (smallest-coefficient-pair k (+ k m) x q))
+             :use (
+                   (:instance smallest-coefficients-next-step-helper
+                              (n (nfix (SMALLEST-COEFFICIENT-PAIR-WITNESS K (+ K M) X Q))))
+                   (:instance smallest-coefficients-next-step-helper
+                              (n 0))
+                   ))))
+  
+  (defthm smallest-coefficients-next-step-commutes
+    (implies
+     (and
+      (natp k)
+      (natp m)
+      (natp x)
+      (non-trivial-modulus q)
+      (generic-invertible-p x q)
+      (smallest-coefficient-pair k m x q)
+      (not (equal (msign (* m x) q) (msign (* k x) q)))
+      (< k q)
+      (< m q)
+      (<= (mabs (* m x) q) (mabs (* k x) q))
+      )
+     (smallest-coefficient-pair (+ k m) m x q))
+    :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-commutes)
+                                    (smallest-coefficients-next-step))
+             :use (:instance smallest-coefficients-next-step
+                             (k m)
+                             (m k)))))
+
+  )
+  
+(def::un step-minimal-fraction (k m x q)
+  (declare (xargs :signature ((natp natp integerp posp) natp natp)))
+  ;; k is the negative coefficient (< (smod (* k x) q) 0)
+  ;; m is the positive coefficient (< 0 (smod (* m x) q))
+  (if (< (- (smod (* k x) q)) (smod (* m x) q))
+      (mv k (+ k m))
+    (mv (+ k m) m)))
+
+;; (encapsulate
+;;     ()
+
+;;   (local (include-book "arithmetic-5/top" :dir :system))
+
+;;   (defthm lt-mod-reduction
+;;     (implies
+;;      (and
+;;       (natp x)
+;;       (integerp q)
+;;       (< x q))
+;;      (equal (mod x q) x)))
+     
+;;   (defthm pull-negation
+;;     (equal (* x (- y))
+;;            (- (* x y))))
+
+;;   )
+  
+;; (skip-proofs
+;;  (defthm zed
+;;    (iff (EQUAL (SMOD (* M X) Q)
+;;                (- (SMOD (* K X) Q)))
+;;         (equal (mod m q)
+;;                (mod (- k) q)))))
+
+
+
+(defthm smallest-coefficient-pair-step-minimal-fraction
   (implies
    (and
     (natp k)
@@ -837,66 +955,15 @@
     (non-trivial-modulus q)
     (generic-invertible-p x q)
     (smallest-coefficient-pair k m x q)
-    (not (equal (msign (* m x) q) (msign (* k x) q)))
-    (natp N)
+    (< (smod (* k x) q) 0)
+    (< 0 (smod (* m x) q))
     (< k q)
-    (< m q)
-    (< (mabs (* k x) q) (mabs (* m x) q))
-    )
-   (smallest-coefficient-pair-p n k (+ k m) x q))
-  :hints (("Goal" :do-not-induct t
-           :do-not '(generalize eliminate-destructors)
-           :in-theory (enable abs smallest-coefficient-pair-p)
-           :use (smallest-coefficient-pair-implication))
-          (and stable-under-simplificationp
-               '(:use (:instance smallest-coefficient-pair-implication
-                                 (n (delta n m)))))
-          (and stable-under-simplificationp
-               '(:use (:instance smallest-coefficient-pair-implication
-                                 (n (delta n k)))))
-          ))
-
-(defthm smallest-coefficients-next-step
-  (implies
-   (and
-    (natp k)
-    (natp m)
-    (natp x)
-    (non-trivial-modulus q)
-    (generic-invertible-p x q)
-    (smallest-coefficient-pair k m x q)
-    (not (equal (msign (* m x) q) (msign (* k x) q)))
-    (< k q)
-    (< m q)
-    (< (mabs (* k x) q) (mabs (* m x) q))
-    )
-   (smallest-coefficient-pair k (+ k m) x q))
-  :hints (("Goal" :expand ((:free (x) (hide x))
-                           (smallest-coefficient-pair k (+ k m) x q))
-           :use (
-                 (:instance smallest-coefficients-next-step-helper
-                            (n (nfix (SMALLEST-COEFFICIENT-PAIR-WITNESS K (+ K M) X Q))))
-                 (:instance smallest-coefficients-next-step-helper
-                            (n 0))
-                 ))))
-
-(defthm smallest-coefficients-next-step-commutes
-  (implies
-   (and
-    (natp k)
-    (natp m)
-    (natp x)
-    (non-trivial-modulus q)
-    (generic-invertible-p x q)
-    (smallest-coefficient-pair k m x q)
-    (not (equal (msign (* m x) q) (msign (* k x) q)))
-    (< k q)
-    (< m q)
-    (< (mabs (* m x) q) (mabs (* k x) q))
-    )
-   (smallest-coefficient-pair (+ k m) m x q))
-  :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-commutes)
-                                  (smallest-coefficients-next-step))
-           :use (:instance smallest-coefficients-next-step
-                           (k m)
-                           (m k)))))
+    (< m q))
+   (mv-let (k m) (step-minimal-fraction k m x q)
+     (smallest-coefficient-pair k m x q)))
+  :otf-flg t
+  :hints ((and stable-under-simplificationp
+               '(:use (smallest-coefficients-next-step-commutes
+                       smallest-coefficients-next-step)))))
+  
+      
