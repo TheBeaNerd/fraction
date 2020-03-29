@@ -80,22 +80,22 @@
           (and (smallest-coefficient-pair k m x q)
                (all-smallest-coefficient-pair-p (cdr list) x q)))))))
 
+
+
 (defthm all-smallest-coefficient-pair-all-minimal-fractions
   (implies
    (and
-    (posp q)
     (natp k)
     (natp m)
     (natp x)
+    (non-trivial-modulus q)
     (generic-invertible-p x q)
     (not (equal (msign (* m x) q) (msign (* k x) q)))
     (smallest-coefficient-pair k m x q)
     )
    (all-smallest-coefficient-pair-p (all-minimal-pairs k m x q) x q))
   :hints ((and stable-under-simplificationp
-               '(:in-theory (enable mabs abs)))))
-
-
+               '(:in-theory (enable smod-plus mabs abs)))))
 
 (defun strip-k (list)
   (if (not (consp list)) nil
@@ -128,16 +128,23 @@
         (increasing-list x (cdr list))
       (<-all x list))))
 
-(defthm increasing-list-k-all-minimal-pairs
-  (implies
-   (<= (nfix z) (nfix k))
-   (increasing-list z (strip-k (all-minimal-pairs k m x q)))))
+(encapsulate
+    ()
 
-(defthm increasing-list-m-all-minimal-pairs
-  (implies
-   (<= (nfix z) (nfix m))
-   (increasing-list z (strip-m (all-minimal-pairs k m x q)))))
+  (local (include-book "arithmetic-5/top" :dir :system))
 
+  (defthm increasing-list-k-all-minimal-pairs
+    (implies
+     (<= (nfix z) (nfix k))
+     (increasing-list z (strip-k (all-minimal-pairs k m x q)))))
+  
+  (defthm increasing-list-m-all-minimal-pairs
+    (implies
+     (<= (nfix z) (nfix m))
+     (increasing-list z (strip-m (all-minimal-pairs k m x q)))))
+
+  )
+  
 (defun all-increasing-list (list)
   (if (not (consp list)) t
     (and (increasing-list (car list) (cdr list))

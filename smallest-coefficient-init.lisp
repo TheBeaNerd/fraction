@@ -10,10 +10,11 @@
 
 (include-book "smallest-coefficient-step")
 
-(in-theory (disable SMOD-COMMUTES-MULTIPLICATION))
+;;(in-theory (disable SMOD-COMMUTES-MULTIPLICATION))
 
-(local (include-book "arithmetic-5/top" :dir :system))
+;;(local (include-book "arithmetic-5/top" :dir :system))
 
+#+joe
 (defthmd mod-plus-same-sign
   (implies
    (and
@@ -31,6 +32,7 @@
             (+ (- q) (mod a q) (mod b q)))))
   :hints (("Goal" :in-theory (enable ifix abs mabs smod msign))))
 
+#+joe
 (defthmd smod-plus-same-sign
   (implies
    (and
@@ -46,6 +48,7 @@
              (smod b q))))
   :hints (("Goal" :in-theory (enable ifix abs mabs smod msign))))
 
+#+joe
 (defthm smod-zero
   (equal (smod 0 c) 0)
   :hints (("Goal" :in-theory (enable smod))))
@@ -60,32 +63,6 @@
       (if (<= n 0) t
         (and (equal (msign (* n x) q) (msign x q))
              (all-same-sign-upto-n (1- n) x q))))))
-
-;; (skip-proofs
-;;  (defthm generic-invertible-p-implies-not-divisible
-;;    (implies
-;;     (generic-invertible-p x q)
-;;     (not (integerp (* (/ q) x))))
-;;    :rule-classes (:forward-chaining))
-;;  )
-
-;; (skip-proofs
-;;  (defthm generic-invertible-p-implies-not-divisible-corr
-;;    (implies
-;;     (generic-invertible-p x q)
-;;     (not (EQUAL (MOD X Q) (* 1/2 Q))))
-;;    :rule-classes (:forward-chaining))
-;;  )
-
-;; (defthm an-inverting-value-exists
-;;   (implies
-;;    (and
-;;     (integerp x)
-;;     (posp q)
-;;     (generic-invertible-p x q)
-;;     (equal v (- q 1)))
-;;    (not (equal (msign (* v x) q) (msign x q))))
-;;   :hints (("Goal" :in-theory (enable smod))))
 
 (defun smallest-coefficient (n x q)
   (declare (xargs :measure (nfix (- (posfix q) (nfix n)))
@@ -122,115 +99,189 @@
   :hints (("Goal" :induct (smallest-coefficient n x q)
            :in-theory (disable msign))))
 
-(defthm smallest-coefficient-is-smallest-instance
-  (implies
-   (and
-    (< c (smallest-coefficient 0 x q))
-    (not (equal (* 2 (mabs x q)) q))
-    (posp q)
-    (natp x)
-    (posp c))
-   (equal (msign (* c x) q) (msign x q)))
-  :hints (("Goal" :use (:instance smallest-coefficient-is-smallest
-                                  (n 0))
-           :expand (all-same-sign-upto-n 0 x q)
-           :in-theory (disable smallest-coefficient-is-smallest))))
-
-(defthm positive-smallest-coefficient-changes-sign
-  (implies
-   (and
-    (equal (msign (* x (smallest-coefficient n x q)) q)
-           (msign x q))
-    (natp n)
-    (posp q)
-    (natp x))
-   (equal (smallest-coefficient n x q) 0)))
-
-(defthm msign-times-smallest-coefficient
-  (implies
-   (and
-    (natp n)
-    (posp q)
-    (natp x)
-    (< 0 (smallest-coefficient n x q)))
-   (equal (msign (* x (smallest-coefficient n x q)) q)
-          (- (msign x q)))))
-
-(defthm smallest-coefficient-pair-p-1-smallest-coefficient
-  (implies
-   (and
-    (natp n)
-    (posp q)
-    (natp x)
-    (force (not (equal (* 2 (mabs x q)) q))))
-   (smallest-coefficient-pair-p n 1 (smallest-coefficient 0 x q) x q))
-  :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-p) 
-                                  ((:type-prescription msign) 
-                                   msign)))))
-
-
 (encapsulate
     ()
 
-  (local
-   (encapsulate
-       ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  
+  (defthm no-negative-half
+    (implies
+     (and
+      (integerp x)
+      (posp q))
+     (not (equal (* -2 (smod x q)) q)))
+    :hints (("Goal" :in-theory (enable smod))))
 
-     (defthmd generic-invertible-p-mod-rewrite
-       (implies
-        (force 
-         (and
-          (integerp x)
-          (posp q)))
-        (iff (generic-invertible-p (mod x q) q)
-             (generic-invertible-p x q)))
-       :hints (("Goal" :use generic-invertible-p-mod)))
-     
-     (defthm mod-of-modulus
-       (implies
-        (force (and (integerp x) (integerp q)))
-        (equal (MOD (+ Q x) Q)
-               (mod x q))))
-     
-     (defthm mod-negation
-       (implies
-        (and
-         (integerp x)
-         (integerp q))
-        (equal (mod (- (mod x q)) q)
-               (mod (- x) q))))
-     
-     (defthmd generic-invertible-p-mabs-helper
-       (implies
-        (and
-         (integerp x)
-         (posp q)
-         (generic-invertible-p x q))
-        (generic-invertible-p (mod (mabs x q) q) q))
-       :hints (("Goal" :in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))|))
-               (and stable-under-simplificationp
-                    '(:in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))| 
-                                   mod-negation generic-invertible-p-mod-rewrite)))
-               (and stable-under-simplificationp
-                    '(:in-theory (current-theory :here)))))
-     ))
-
-  (defthm generic-invertible-p-mabs
+  (defthm half-is-always-positive
     (implies
      (and
       (integerp x)
       (posp q)
-      (generic-invertible-p x q))
-     (generic-invertible-p (mabs x q) q))
-    :rule-classes (:rewrite
-                   (:forward-chaining :trigger-terms ((mabs x q))))
-    :hints (("Goal" :use generic-invertible-p-mabs-helper
-             :in-theory (enable generic-invertible-p-mod-rewrite))))
+      (natp c)
+      (equal (* 2 (smod x q)) q))
+     (equal (smod (* c x) q)
+            (if (equal (mod c 2) 0) 0
+              (smod x q))))
+    :hints (("Goal" :in-theory (enable smod))))
+
+  (defthm smallest-coefficient-is-smallest-instance
+    (implies
+     (and
+      (< c (smallest-coefficient 0 x q))
+      (posp q)
+      (natp x)
+      (posp c))
+     (equal (msign (* c x) q) (msign x q)))
+    :otf-flg t
+    :hints (("Goal" :use (:instance smallest-coefficient-is-smallest
+                                    (n 0))
+             :expand (all-same-sign-upto-n 0 x q)
+             :in-theory (disable smallest-coefficient-is-smallest))))
+
+  (defthm positive-smallest-coefficient-changes-sign
+    (implies
+     (and
+      (equal (msign (* x (smallest-coefficient n x q)) q)
+             (msign x q))
+      (natp n)
+      (posp q)
+      (natp x))
+     (equal (smallest-coefficient n x q) 0))
+    :hints (("Goal" :induct (smallest-coefficient n x q))))
+  
+  (defthm msign-times-smallest-coefficient
+    (implies
+     (and
+      (natp n)
+      (posp q)
+      (natp x)
+      ;;(generic-invertible-p x q)
+      (< 0 (smallest-coefficient n x q)))
+     (equal (msign (* x (smallest-coefficient n x q)) q)
+            (- (msign x q))))
+    :hints (("Goal" :induct (smallest-coefficient n x q)
+             :do-not-induct t)
+            (and stable-under-simplificationp
+                 '(:in-theory (enable equal-smod-zero-x smod-plus)))))
+  
+  (defthm smallest-coefficient-pair-p-1-smallest-coefficient
+    (implies
+     (and
+      (natp n)
+      (posp q)
+      (natp x)
+      ;;(force (not (equal (* 2 (mabs x q)) q)))
+      )
+     (smallest-coefficient-pair-p n 1 (smallest-coefficient 0 x q) x q))
+    :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair-p) 
+                                    ((:type-prescription msign) 
+                                     msign)))
+            (and stable-under-simplificationp
+                 '(:in-theory (current-theory :here)))
+            ))
 
   )
+  
+;; dag
+;; :monitor (:rewrite nary::mod-+-congruence) '(:target :go)
+;; :monitor (:rewrite generic-invertible-p-mod-congruence) '(:target :go)
+;; :brr t
+;; (set-evisc-tuple nil)
+;; (trace$ NARY::UN-MOD)
+
+(defthm generic-invertible-p-mabs
+  (implies
+   (and
+    (posp q)
+    (generic-invertible-p x q))
+   (generic-invertible-p (mabs x q) q))
+  :rule-classes (:rewrite
+                 (:forward-chaining :trigger-terms ((mabs x q))))
+  :hints (("Goal" :cases ((integerp x))
+           :in-theory (e/d (smod
+                            nary::mod-rules
+                            generic-invertible-p-mod-congruence
+                            )
+                           (mod)))))
+           
+;; (defthmd generic-invertible-p-mabs-helper
+;;   (implies
+;;    (and
+;;     (integerp x)
+;;     (posp q)
+;;     (generic-invertible-p x q))
+;;    (generic-invertible-p (mod (mabs x q) q) q))
+;;   :hints (("Goal" :in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))|))
+;;           (and stable-under-simplificationp
+;;                '(:in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))| 
+;;                               mod-negation generic-invertible-p-mod-rewrite)))
+;;           (and stable-under-simplificationp
+;;                '(:in-theory (current-theory :here)))))
+
+;; (encapsulate
+;;     ()
+
+;;   (local
+;;    (encapsulate
+;;        ()
+
+;;      (defthmd generic-invertible-p-mod-rewrite
+;;        (implies
+;;         (force 
+;;          (and
+;;           (integerp x)
+;;           (posp q)))
+;;         (iff (generic-invertible-p (mod x q) q)
+;;              (generic-invertible-p x q)))
+;;        :hints (("Goal" :use generic-invertible-p-mod)))
+     
+;;      (defthm mod-of-modulus
+;;        (implies
+;;         (force (and (integerp x) (integerp q)))
+;;         (equal (MOD (+ Q x) Q)
+;;                (mod x q))))
+     
+;;      (defthm mod-negation
+;;        (implies
+;;         (and
+;;          (integerp x)
+;;          (integerp q))
+;;         (equal (mod (- (mod x q)) q)
+;;                (mod (- x) q))))
+     
+;;      (defthmd generic-invertible-p-mabs-helper
+;;        (implies
+;;         (and
+;;          (integerp x)
+;;          (posp q)
+;;          (generic-invertible-p x q))
+;;         (generic-invertible-p (mod (mabs x q) q) q))
+;;        :hints (("Goal" :in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))|))
+;;                (and stable-under-simplificationp
+;;                     '(:in-theory `((force) mod-of-modulus posp ifix posfix nfix smod abs mabs |(- (- x))| 
+;;                                    mod-negation generic-invertible-p-mod-rewrite)))
+;;                (and stable-under-simplificationp
+;;                     '(:in-theory (current-theory :here)))))
+;;      ))
+
+;;   (defthm generic-invertible-p-mabs
+;;     (implies
+;;      (and
+;;       (integerp x)
+;;       (posp q)
+;;       (generic-invertible-p x q))
+;;      (generic-invertible-p (mabs x q) q))
+;;     :rule-classes (:rewrite
+;;                    (:forward-chaining :trigger-terms ((mabs x q))))
+;;     :hints (("Goal" :use generic-invertible-p-mabs-helper
+;;              :in-theory (enable generic-invertible-p-mod-rewrite))))
+
+;;   )
 
 (encapsulate
     ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))
 
   (local
    (encapsulate
@@ -343,19 +394,27 @@
    (non-trivial-modulus p))
   :rule-classes (:forward-chaining))
 
-(defthm implies-not-half
-  (implies
-   (and
-    (generic-invertible-p x q)
-    (integerp x)
-    (non-trivial-modulus q))
-   (not (equal (* 2 (mabs x q)) q)))
-  :hints (("Goal" :use (:instance generic-invertible-p-implication-1
-                                  (x (mabs x q))
-                                  (q q)))
-          (and stable-under-simplificationp
-               '(:in-theory (enable mabs abs posfix smod))))
-  :rule-classes :forward-chaining)
+(encapsulate
+    ()
+
+  (local (include-book "arithmetic-5/top" :dir :system))  
+  
+  (defthm implies-not-half
+    (implies
+     (and
+      (generic-invertible-p x q)
+      (integerp x)
+      (non-trivial-modulus q))
+     (not (equal (* 2 (mabs x q)) q)))
+    :hints (("Goal" :in-theory (disable mabs)
+             :use (:instance generic-invertible-p-implication-1
+                             (x (mabs x q))
+                             (q q)))
+            (and stable-under-simplificationp
+                 '(:in-theory (enable mabs abs posfix smod))))
+    :rule-classes :forward-chaining)
+
+  )
 
 (defthm smallest-coefficient-pair-1-smallest-coefficient
   (implies
