@@ -213,143 +213,6 @@
    (<-all m (strip-m list))
    (not (pair-member-p k m list))))
 
-;; dag
-;; (defthm <-all-strip-k-implies-not-pair-member-p
-;;   (implies
-;;    (and
-;;     (< k b))
-;;    (iff (pair-member-p k m (all-minimal-pairs a b x q))
-;;         (and (equal k a)
-;;              (equal m (+ b (* z k)))))))
-
-;; (defaxiom equal-mabs-reduction
-;;   (iff (equal (mabs (* m x) q)
-;;               (mabs (* k x) q))
-;;        (or (equal m k)
-;;            (equal m (- q k)))))
-
-;; ;; This theorem is important because it is the start of "we find all
-;; ;; minimal fractions"
-;; (defthm all-minimal-pairs-is-complete
-;;   (implies
-;;    (and
-;;     (natp k)
-;;     (natp m)
-;;     (natp a)
-;;     (natp b)
-;;     (natp x)
-;;     (posp q)
-;;     (smallest-coefficient-pair k m x q)
-;;     (smallest-coefficient-pair a b x q)
-;;     (<= m a)
-;;     (<= k b))
-;;    (pair-member-p a b (all-minimal-pairs k m x q)))
-;;   :hints (("Subgoal *1/25.1" :in-theory (enable SMALLEST-COEFFICIENT-PAIR-P)
-;;            :use (:instance smallest-coefficient-pair-implication
-;;                            (n b)))))
-
-
-
-;; (defun minimal-pair-ordering-p (list)
-;;   (if (not (consp list))
-
-;; (defthm not-equal-msign-implies-not-equal-mabs
-;;   (implies
-;;    (and
-;;     (natp k)
-;;     (natp m)
-;;     (natp x)
-;;     (posp q)
-;;     (< k q)
-;;     (< m q)
-;;     (not (equal (msign (* k x) q) (msign (* m x) q)))
-;;     (equal (mabs (* k x) q) (mabs (* m x) q)))
-;;    (equal (mabs (* (+ k m) x) q) 0))
-;;   :hints (("Goal" :in-theory (enable abs mabs))))
-
-
-
-;; (defthm
-;;   (implies
-;;    (and
-;;     (<= (* k k) q)
-;;     (<= (* m m) q)
-;;     (<= q (* (smod (* k x) q) (smod (* k x) q)))
-;;     (<= q (* (smod (* m x) q) (smod (* m x) q)))
-;;     )
-;;    ;; one will have both
-;;    (at-least-one-small-fraction (all-minimal-fractions k m x q) q)))
-
-
-;; Consider x, an invertiable integer mod M.  If D*x = N % M then x can
-;; be expressed as the fraction N/D.  Clearly x has many fractional
-;; representations.  In this paper we define a notion of minimal
-;; fractions and show that we can compute the set of minimal fractions
-;; for x.  Finally we prove that x can be expressed as a (possibly
-;; negative) fraction whose integral components, N and D, are both less
-;; than or equal to sqrt(M).
-
-;; (defun good (x y q)
-;;   (let ((sx (* x x))
-;;         (sy (* y y)))
-;;     (if (and (< sx q) (< sy q))
-;;         (+ sx sy)
-;;       (+ q sx sy))))
-
-;; (skip-proofs
-;; (defun min-fraction-rec (k n m p q)
-;;   (declare (xargs :measure (nfix (+ n p))))
-;; ;;  (prog2$
-;; ;;   (cw "~p0" (list k n m p))
-;;    (cond
-;;     ((or (<= n 1)
-;;          (<= p 1))
-;;      (if (< (good n k q) (good p m q))
-;;          (/ (- n) k)
-;;        (/ p m)))
-;;     ((< n p)
-;;      (let ((np (- p n))
-;;            (nm (+ m k)))
-;;        (if (< (good p m q) (good np nm q))
-;;            (if (< (good n k q) (good p m q))
-;;                (/ (- n) k)
-;;              (/ p m))
-;;          (min-fraction-rec k n nm np q))))
-;;     (t
-;;      (let ((nn (- n p))
-;;            (nk (+ k m)))
-;;        (if (< (good n k q) (good nn nk q))
-;;            (if (< (good n k q) (good p m q))
-;;                (/ (- n) k)
-;;              (/ p m))
-;;          (min-fraction-rec nk nn m p q))))))
-;; )
-
-;; (defun posfix (x)
-;;   (if (posp x) x 1))
-
-;; (defun smod (v p)
-;;   (let ((v (ifix v))
-;;         (p (posfix p)))
-;;     (let ((x (mod v p)))
-;;       (if (<= (* 2 x) p) x
-;;         (- (- p x))))))
-
-;; ;; So it looks like we could use the following to initialize
-;; ;; the fraction process ..
-;; (defun min-fraction (v q)
-;;   (let ((s (smod v q)))
-;;     (if (< s 0) (min-fraction-rec 1 (- s) 0 q q)
-;;       (min-fraction-rec 0 q 1 s q))))
-      
-;; (defun min-fractions (v q)
-;;   (if (zp v) nil
-;;     (cons (min-fraction v q)
-;;           (min-fractions (1- v) q))))
-
-;; (defun doit(q)
-;;   (min-fractions (1- q) q))
-
 (defthm s+-can-be-represented-in-terms-of-s-
   (implies
    (and
@@ -424,7 +287,7 @@
     (if (not (equal g 1)) (list (element 0 1 0 1))
       (let ((x (smod x q)))
         (if (or (equal x 0) (equal x 1) (equal x -1)) (list (element x 1 x 1))
-          (let ((c (minimal-fraction-init 0 (mod x q) q)))
+          (let ((c (minimal-fraction-init-rec 0 (mod x q) q)))
             (met ((k m x) (if (< x 0) (mv 1 c (+ q x)) (mv c 1 x)))
               (minimal-fraction-list-rec k m x q))))))))
 
@@ -472,7 +335,7 @@
     (if (not (equal g 1)) (mv 0 1)
       (let ((x (smod x q)))
         (if (or (equal x 0) (equal x 1) (equal x -1)) (mv x 1)
-          (let ((c (minimal-fraction-init 0 (mod x q) q)))
+          (let ((c (minimal-fraction-init-rec 0 (mod x q) q)))
             (met ((k m x) (if (<= x 0) (mv 1 c (+ q x)) (mv c 1 x)))
               (met ((n d) (minimal-fraction-rec k m x q))
                 (mv n d)))))))))

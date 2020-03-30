@@ -221,15 +221,20 @@
                  (:forward-chaining :trigger-terms ((smod v p)))))
 
 (defun sign (x)
+  (declare (type t x))
   (if (< (ifix x) 0) -1 1))
   
 (defun msign (v p)
+  (declare (xargs :guard (and (integerp v)
+                              (posp p))))
   (sign (smod v p)))
 
-(defun mabs (v p)
+(def::un mabs (v p)
+  (declare (xargs :signature ((integerp posp) natp)))
   (abs (smod v p)))
 
 (defun non-trivial-modulus (p)
+  (declare (type t p))
   (and (integerp p)
        (< 2 p)))
 
@@ -509,20 +514,32 @@
   ;;  (encapsulate
   ;;      ()
      
-     ;; (defthmd half-smod-implies-1
-     ;;   (implies
-     ;;    (and
-     ;;     (generic-invertible-p x q)
-     ;;     (integerp x)
-     ;;     (natp k)
-     ;;     (non-trivial-modulus q)
-     ;;     (<= k q)
-     ;;     (equal (* 2 (smod (* k x) q)) q))
-     ;;    (equal (mod (* 2 k) q) 0))
-     ;;   :otf-flg t
-     ;;   :hints (("Goal" :use (:instance equal-q-implication
-     ;;                                   (a 2)))))
-
+  (defthmd half-smod-implies-1
+    (implies
+     (and
+      (generic-invertible-p x q)
+      (integerp x)
+      (natp k)
+      (non-trivial-modulus q)
+      (<= k q)
+      (equal (* 2 (smod (* k x) q)) q))
+     (equal (mod (* 2 k) q) 0))
+    :otf-flg t
+    :hints (("Goal" :use (:instance equal-q-implication
+                                    (a 2)))))
+  (defthm half-smod-implies
+    (implies
+     (and
+      (equal (* 2 (smod x q)) q)
+      (generic-invertible-p x q)
+      (integerp x)
+      (non-trivial-modulus q)
+      )
+     (equal q 1))
+    :rule-classes nil
+    :hints (("Goal" :use (:instance half-smod-implies-1
+                                    (k 1)))))
+    
   ;;    (defthmd open-mod
   ;;      (implies
   ;;       (and
