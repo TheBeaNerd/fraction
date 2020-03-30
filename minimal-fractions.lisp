@@ -531,3 +531,30 @@
              :use one-fraction-lt-sqrt-h2)))
 
   )
+
+;; k n m p
+;; (equal (- (* k p) (* m n)) q)
+;; 1 -v 0 Q
+;; (equal (- (* 1 Q) (* 0 -v)) q)
+;; 0 -Q 1 v
+;; (equal (- (* 0 v) (* 1 Q)) q)
+;;
+;; I think we need to modify our invaiant.
+;; - it will simplify things in the long run.
+;;
+
+;; 1 -v 1 Q-v
+
+
+
+(defthm smallest-coefficient-pair-p-init-1
+  (implies
+   (natp x)
+   (smallest-coefficient-pair-p n 1 0 x q))
+  :hints (("Goal" :in-theory (enable smallest-coefficient-pair-p))))
+
+(defthm smallest-coefficient-pair-p-init-2
+  (implies
+   (natp x)
+   (smallest-coefficient-pair-p n 0 1 x q))
+  :hints (("Goal" :in-theory (enable smallest-coefficient-pair-p))))

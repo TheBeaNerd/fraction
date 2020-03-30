@@ -31,8 +31,9 @@
         (x (nfix x)))
     (if (<= q n) 0
       (let ((n (1+ n)))
-        (if (not (equal (msign (* n x) q) (msign x q))) n
-          (minimal-fraction-init-rec n x q))))))
+        (if (<= q n) 0
+          (if (not (equal (msign (* n x) q) (msign x q))) n
+            (minimal-fraction-init-rec n x q)))))))
 
 (defthm all-same-sign-upto-n-are-the-same
   (implies
@@ -409,9 +410,11 @@
     (non-trivial-modulus q)
     (generic-invertible-p x q)
     (natp x))
-   (mv-let (k n m p) (minimal-fraction-init x q)
-     (declare (ignore n p))
+   (let ((k (val 0 (minimal-fraction-init x q)))
+         (m (val 2 (minimal-fraction-init x q))))
      (smallest-coefficient-pair k m x q)))
+  :rule-classes (:rewrite
+                 (:forward-chaining :trigger-terms ((minimal-fraction-init x q))))
   :hints (("Goal" :in-theory (e/d (generic-invertible-p-mod
                                    SMALLEST-COEFFICIENT-PAIR-COMMUTES)
                                   (MINIMAL-FRACTION-INIT-REC)))))
@@ -587,7 +590,15 @@
      (syntaxp (quotep c))
      (equal (* c (- x))
             (* (- c) x))))
- 
+
+  (defthm mod-less-than-modulus
+    (implies
+     (and
+      (natp x)
+      (natp q)
+      (< x q))
+     (equal (mod x q) x)))
+  
   )
 
 (defthm not-negative-half-instance
@@ -605,24 +616,9 @@
 ;; (integerp q) is disappearing in the following proof .. thus
 ;; it fails.
 ;;
-(local (include-book "std/testing/must-fail-local" :dir :system))
-
-(must-fail-local
- (defthm all-same-sign-upto-n-zero-fails
-   (implies
-    (and
-     (natp n)
-     (natp x)
-     (non-trivial-modulus q)
-     (generic-invertible-p x q))
-    (all-same-sign-upto-n 0 x q))
-   :otf-flg t
-   :hints (("Goal" :use (half-smod-implies)))))
-
 (defthm all-same-sign-upto-n-zero
   (implies
    (and
-    (natp n)
     (natp x)
     (non-trivial-modulus q)
     (generic-invertible-p x q))
@@ -635,14 +631,30 @@
            :expand (ALL-SAME-SIGN-UPTO-N 0 X Q)
            :use (half-smod-implies))))
 
+(local (include-book "std/testing/must-fail-local" :dir :system))
+
+(must-fail-local
+ (defthm all-same-sign-upto-n-zero-fails
+   (implies
+    (and
+     (natp x)
+     (non-trivial-modulus q)
+     (generic-invertible-p x q))
+    (all-same-sign-upto-n 0 x q))
+   :otf-flg t
+   :hints (("Goal" :in-theory (disable all-same-sign-upto-n-zero)
+            :use (half-smod-implies)))))
+
 (defthm minimal-fraction-init-rec-is-positive-instance
   (implies
    (and
-    (natp n)
     (natp x)
     (non-trivial-modulus q)
     (generic-invertible-p x q))
    (< 0 (minimal-fraction-init-rec 0 x q)))
+  :rule-classes (:rewrite
+                 :linear
+                 (:forward-chaining :trigger-terms ((minimal-fraction-init-rec 0 x q))))
   :otf-flg t
   :hints (("Goal" :in-theory (disable all-same-sign-upto-n)
            :use (half-smod-implies
@@ -652,7 +664,6 @@
 (defthm msign-times-minimal-fraction-init-rec-instance
   (implies
    (and
-    (natp n)
     (natp x)
     (non-trivial-modulus q)
     (generic-invertible-p x q))
@@ -660,3 +671,122 @@
           (- (msign x q))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable msign))))
+
+(defthm equal-smod-zero-x-alt
+  (implies
+   (and
+    (integerp k)
+    (integerp x)
+    (generic-invertible-p x q)
+    (posp q))
+   (iff (equal (smod (* x k) q) 0)
+        (equal (mod k q) 0)))
+  :hints (("Goal" :in-theory (enable equal-smod-zero-x))))
+
+(defthm minimal-fraction-init-rec-upper-bound
+  (implies
+   (posp q)
+   (< (minimal-fraction-init-rec n x q) q))
+  :hints (("goal" :induct (minimal-fraction-init-rec n x q))))
+
+(defthm minimal-fraction-init-signs
+  (implies
+   (and
+    (natp x)
+    (non-trivial-modulus q)
+    (generic-invertible-p x q))
+   (and (< (val 1 (minimal-fraction-init x q)) 0)
+        (< 0 (val 3 (minimal-fraction-init x q)))))
+  :otf-flg t
+  :rule-classes (:rewrite
+                 :linear
+                 (:forward-chaining :trigger-terms ((minimal-fraction-init x q))))
+  :hints (("Goal" :in-theory (disable MINIMAL-FRACTION-INIT-REC all-same-sign-upto-n-zero)
+           :use (msign-times-minimal-fraction-init-rec-instance
+                 all-same-sign-upto-n-zero)
+           )))
+
+(defun invariant (x q)
+  (met ((k n m p) (minimal-fraction-init x q))
+    (- (* k p) (* n m))))
+
+(defun div2 (n d)
+  (let ((n (nfix n))
+        (d (posfix d)))
+    (if (zp d) 0
+      (if (< n (* 2 d)) 0
+        (1+ (div2 (- n (* 2 d)) d))))))
+
+;; (include-book "arithmetic-5/top" :dir :system)
+
+;; (in-theory (disable mabs))
+
+;; (defun div-mabs (q x)
+;;   (declare (xargs :measure (nfix q)))
+;;   (if (<= (nfix q) 0) 0
+;;     (if (<= (mabs x q) 0) 0
+;;       (if (< q (mabs x q)) 0
+;;         (1+ (div-mabs (- q (mabs x q)) x))))))
+
+;; (defthm all-same-sign-upto-div2
+;;   (ALL-SAME-SIGN-UPTO-N (div-mabs q x) X Q))
+
+
+;; (skip-proofs
+;;  (defthm zed
+;;    (implies
+;;     (and
+;;      (ALL-SAME-SIGN-UPTO-N N X Q)
+;;      (not (equal (msign (* n x) q)
+;;                  (msign (+ x (* n x)) q))))
+;;     (equal (DIV2 Q (mabs X Q)) n))))
+
+;; (defthm zed-1
+;;   (implies
+;;    (and
+;;     (integerp x)
+;;     (integerp n)
+;;     (posp q)
+;;     (ALL-SAME-SIGN-UPTO-N N X Q)
+;;     (<= 0 (SMOD X Q))
+;;     (< (SMOD (+ X (* N X)) Q) 0))
+;;    (equal (DIV2 Q (SMOD X Q)) n))
+;;   :hints (("Goal" ;;:in-theory '(sign msign)
+;;            :use zed)))
+
+;; (defthm zed-2
+;;   (implies
+;;    (and
+;;     (ALL-SAME-SIGN-UPTO-N N X Q)
+;;     (<= 0 (SMOD (+ X (* N X)) Q))
+;;     (< (SMOD X Q) 0))
+;;    (equal (DIV2 Q (- (SMOD X Q))) n))
+;;   :hints (("Goal" :use zed)))
+  
+;; (defthm reduce-minimal-fraction-init-rec
+;;   (implies
+;;    (and
+;;     (natp x)
+;;     (natp n)
+;;     (non-trivial-modulus q)
+;;     (generic-invertible-p x q)
+;;     (< n q)
+;;     (all-same-sign-upto-n n x q))
+;;    (equal (minimal-fraction-init-rec n x q)
+;;           (1+ (div2 q (mabs x q)))))
+;;   :hints (("Goal" :induct (minimal-fraction-init-rec n x q)
+;;            :do-not-induct t))
+;;   :otf-flg t)
+
+
+#+joe
+(defthm
+  (implies
+   (and
+    (natp n)
+    (natp x)
+    (non-trivial-modulus q)
+    (< n q)
+    (all-same-sign-upto-n n x q))
+   (equal (+ (* (mabs (* x (minimal-fraction-init-rec n x q)) q))))))
+
