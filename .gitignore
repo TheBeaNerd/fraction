@@ -1,0 +1,9 @@
+*.cert
+*.port
+*.out
+*.lx*
+*.aux
+*.bbl
+*.blg
+*.log
+*.pag
