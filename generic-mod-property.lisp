@@ -22,6 +22,20 @@
 
 (include-book "coi/quantification/quantified-congruence" :dir :system)
 
+(defun nfix-equiv (x y)
+  (equal (nfix x) (nfix y)))
+
+(defequiv nfix-equiv)
+
+(defthm nfix-equiv-nfix
+  (nfix-equiv (nfix x) x))
+
+(defcong nfix-equiv equal (nfix x) 1)
+
+(in-theory (disable nfix-equiv))
+
+(in-theory (disable nfix-equiv))
+
 (defun ifix-equiv (x y)
   (equal (ifix x) (ifix y)))
 
@@ -47,6 +61,11 @@
   (equal (pfix x) (pfix y)))
 
 (defequiv pfix-equiv)
+
+(defthm pfix-equiv-pfix
+  (pfix-equiv (pfix x) x))
+
+(defcong pfix-equiv equal (pfix x) 1)
 
 (local
  (encapsulate
