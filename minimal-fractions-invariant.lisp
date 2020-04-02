@@ -1,208 +1,18 @@
 (in-package "ACL2")
 
 (include-book "generic-mod-property")
+(include-book "nary")
 
-(encapsulate
-    ()
-
-  (local (include-book "arithmetic-5/top" :dir :system))
-
-  (defun ndiv (n d)
-    (if (not (and (natp n) (posp d))) 0
-      (if (< n d) 0
-        (1+ (ndiv (- n d) d)))))
-    
-  (defthm natp-ndiv
-    (natp (ndiv n d))
-    :rule-classes ((:forward-chaining :trigger-terms ((ndiv n d)))))
-
-  (local
-   (encapsulate
-       ()
-     
-     (defun nmod (x y)
-       (mod x y))
-     
-     (defthm open-nmod
-       (implies
-        (and (natp x) (posp m) (<= m x))
-        (equal (nmod x m)
-               (if (equal x m) 0
-                 (if (< x m) x
-                   (nmod (- x m) m))))))
-     
-     (defthm alt-nmod
-       (implies
-        (and (natp x) (posp m) (< x m))
-        (equal (nmod x m) x)))
-
-     (local (in-theory (disable nmod)))
-     
-     (defthm nmod-as-ndiv
-       (implies
-        (and
-         (natp n)
-         (posp d))
-        (equal (nmod n d) (- n (* (ndiv n d) d))))
-       :hints (("Goal" :induct (ndiv n d))))
-     
-     ))
-     
-  (defthmd mod-as-ndiv
-    (implies
-     (and
-      (natp n)
-      (posp d))
-     (equal (mod n d) (- n (* (ndiv n d) d))))
-    :hints (("Goal" :use nmod-as-ndiv)))
-
-  )
-
-(encapsulate
-    ()
-
-  (local (include-book "arithmetic-5/top" :dir :system))
-
-  (local
-   (encapsulate
-       ()
-
-     (defun integer-quotient (x y)
-       (ifix (/ x y)))
-     
-     (defthm integerp-integer-quotient
-       (integerp (integer-quotient x y))
-       :rule-classes ((:forward-chaining :trigger-terms ((integer-quotient x y)))))
-     
-     (defthmd natp-integer-quotient
-       (implies
-        (and
-         (force (natp x))
-         (force (natp y)))
-        (<= 0 (integer-quotient x y)))
-       :hints (("Goal" :in-theory (enable ifix))))
-     
-     (defthm integerp-quotient-implies-product
-       (implies
-        (and
-         (integerp x)
-         (integerp y)
-         (not (equal y 0))
-         (integerp (* x (/ y))))
-        (equal (* (integer-quotient x y) y) x)))
-     
-     (in-theory (disable integer-quotient))
-     
-     (defthm integer-quotient-implication
-       (implies
-        (and
-         (integerp x)
-         (integerp y)
-         (not (equal y 0))
-         (integerp (* x (/ y))))
-        (equal (mod x y) 0)))
-     
-     (defthm divisibility-property
-       (implies
-        (and
-         (integerp q)
-         (integerp x)
-         (not (equal x 0))
-         (integerp (* q (/ x))))
-        (equal (mod (* (integer-quotient q x) x) q) (mod (* 0 x) q)))
-       :hints (("Goal" :use (:instance integerp-quotient-implies-product
-                                       (x q)
-                                       (y x))))
-       :rule-classes nil)
-     
-     (defthm integer-quotient-less-than
-       (implies
-        (and
-         (posp q)
-         (posp x))
-        (or (< (integer-quotient q x) q)
-            (equal x 1)))
-       :hints (("Goal" :in-theory (enable ifix integer-quotient))))
-     
-     (defthm mod-less-than
-       (implies
-        (and
-         (natp x)
-         (natp q)
-         (< x q))
-        (equal (mod x q) x)))
-
-     ))
-     
-  (defthmd generic-invertible-p-implication-1
-    (implies
-     (and
-      (generic-invertible-p x q)
-      (integerp (* q (/ x)))
-      (posp q)
-      (natp x))
-     (equal x 1))
-    :hints (("Goal" :use (divisibility-property
-                          generic-invertible-p-is-not-zero
-                          integer-quotient-less-than)
-             :in-theory '(natp 
-                          posp
-                          integerp-integer-quotient
-                          generic-equal-mod-product-reduction))
-            (and stable-under-simplificationp
-                 `(:in-theory '((force)
-                                natp
-                                posp 
-                                mod-less-than
-                                natp-integer-quotient
-                                integerp-integer-quotient)))
-            (and stable-under-simplificationp
-                 '(:in-theory (enable integer-quotient))))
-    :rule-classes :forward-chaining)
-
-  )
-
-(defun posfix (x)
+(defun negp (x)
   (declare (type t x))
-  (if (posp x) x 1))
+  (and (integerp x)
+       (< x 0)))
 
-(def::un smod (v p)
-  (declare (xargs :signature ((integerp posp) integerp)))
-  (let ((v (ifix v))
-        (p (posfix p)))
-    (let ((x (mod v p)))
-      (if (<= (* 2 x) p) x
-        (- x p)))))
-
-(defthm integerp-smod
-  (integerp (smod v p))
-  :rule-classes (:rewrite
-                 (:forward-chaining :trigger-terms ((smod v p)))))
-
-(defun sign (x)
-  (declare (type t x))
-  (if (< (ifix x) 0) -1 1))
-  
-(defun msign (v p)
-  (declare (xargs :guard (and (integerp v)
-                              (posp p))))
-  (sign (smod v p)))
-
-(def::un mabs (v p)
-  (declare (xargs :signature ((integerp posp) natp)))
-  (abs (smod v p)))
-
-(defun non-trivial-modulus (p)
-  (declare (type t p))
-  (and (integerp p)
-       (< 2 p)))
-
-(defthm implies-non-trivial-modulus
+(defthm negp-implies
   (implies
-   (and
-    (< 2 p)
-    (integerp p))
-   (non-trivial-modulus p))
+   (negp x)
+   (and (integerp x)
+        (< x 0)))
   :rule-classes (:forward-chaining))
 
 (encapsulate
@@ -210,272 +20,283 @@
 
   (local (include-book "arithmetic-5/top" :dir :system))
 
-  (local
-   (defthm equal-smod-zero-mod
-     (implies
-      (and
-       (integerp k)
-       (integerp x)
-       (generic-invertible-p x q)
-       (posp q))
-      (iff (equal (smod (* k x) q) (smod (* 0 x) q))
-           (equal (mod k q) (mod 0 q))))
-     :hints (("Goal" :in-theory (enable posfix smod)
-              :use (:instance generic-equal-mod-product-reduction
-                              (x x)
-                              (a k)
-                              (b 0)
-                              (p q)))
-             (and stable-under-simplificationp
-                  '(:in-theory (e/d (posfix smod) (mod)))))))
-
-  (defthmd equal-smod-zero-x
-    (implies
-     (and
-      (integerp k)
-      (integerp x)
-      (generic-invertible-p x q)
-      (posp q))
-     (iff (equal (smod (* k x) q) 0)
-          (equal (mod k q) 0)))
-    :hints (("Goal" :in-theory (enable smod mod)
-             :use equal-smod-zero-mod)))
-
-  )
-
-(encapsulate
-    ()
-
-  (local (include-book "arithmetic-5/top" :dir :system))
+  (def::un pmod (x q)
+    (declare (xargs :signature ((t t) natp)))
+    (mod (ifix x) (pfix q)))
   
-  (local
-   (encapsulate
-       ()
-
-     (defun mul (x y)
-       (* x y))
-     
-     (defthm inner-product-to-mul
-       (implies
-        (and
-         (integerp a)
-         (integerp x)
-         (integerp k)
-         (posp m)
-         )
-        (equal (smod (* a (smod (* k x) m)) m)
-               (smod (* (mul a k) x) m))))
-     
-     (defthmd simple-congruence
-       (implies
-        (equal x y)
-        (equal (smod x m) (smod y m))))
-     
-     (defthm integerp-mul
-       (implies
-        (and (integerp x) (integerp y))
-        (integerp (mul x y)))
-       :rule-classes ((:forward-chaining :trigger-terms ((mul x y)))))
-     
-     (in-theory (disable mul))
-     
-     (defthm equal-product-zero-reduction
-       (implies
-        (and
-         (posp q)
-         (integerp a)
-         (integerp k)
-         (integerp x)
-         (generic-invertible-p x q))
-        (iff (equal (mod (* a k x) q) 0)
-             (equal (mod (* a k) q) 0)))
-       :hints (("Goal" :in-theory (disable  equal-smod-zero-x)
-                :use (:instance equal-smod-zero-x
-                                (k (* a k))))))
-     
-     (defthmd equal-q-implication-1
-       (implies
-        (and
-         (generic-invertible-p x q)
-         (integerp k)
-         (integerp x)
-         (integerp a)
-         (non-trivial-modulus q)
-         (equal (* a (smod (* k x) q)) q))
-        (equal (mod (* a k) q) 0))
-       :otf-flg t
-       :hints (("Goal" :use (:instance simple-congruence
-                                       (x (* a (smod (* k x) q)))
-                                       (y q)
-                                       (m q)))))
-     
-     (defthmd equal-q-implication-2
-       (implies
-        (and
-         (integerp a)
-         (integerp b)
-         (integerp q)
-         (< 0 q)
-         (equal (* a b) q))
-        (iff (< a 0) (< b 0))))
-
-     (defthmd equal-q-implication
-       (implies
-        (and
-         (generic-invertible-p x q)
-         (integerp k)
-         (integerp x)
-         (integerp a)
-         (non-trivial-modulus q)
-         (equal (* a (smod (* k x) q)) q))
-        (and
-         (equal (mod (* a k) q) 0)
-         (iff (< a 0) (< (smod (* k x) q) 0))))
-       :hints (("Goal" :use ((:instance equal-q-implication-2
-                                        (b (smod (* k x) q)))
-                             equal-q-implication-1))))
-     
-     ))
-
-  (defthm not-negative-half
+  (defthm mod-pmod
     (implies
      (and
-      (generic-invertible-p x q)
       (integerp x)
-      (integerp k)
-      (non-trivial-modulus q)
-      (<= k q))
-     (not (equal (* -2 (smod (* k x) q)) q)))
-    :hints (("Goal" :use (:instance equal-q-implication
-                                    (a -2)))))
+      (posp q))
+     (equal (mod (pmod x q) q)
+            (mod x q))))
 
-  ;; (local
-  ;;  (encapsulate
-  ;;      ()
-     
-  (defthmd half-smod-implies-1
+  ;; This is too painful ..
+  (defthmd drop-pmod
     (implies
      (and
-      (generic-invertible-p x q)
-      (integerp x)
-      (natp k)
-      (non-trivial-modulus q)
-      (<= k q)
-      (equal (* 2 (smod (* k x) q)) q))
-     (equal (mod (* 2 k) q) 0))
-    :otf-flg t
-    :hints (("Goal" :use (:instance equal-q-implication
-                                    (a 2)))))
-  (defthm half-smod-implies
+      (natp x)
+      (posp q)
+      (< x q))
+     (equal (pmod x q) x)))
+
+  (defthm pmod-bound
+    (implies
+     (posp q)
+     (< (pmod x q) q))
+    :rule-classes (:linear))
+  
+  (def::un nmod (x q)
+    (declare (xargs :signature ((t t) negp)))
+    (- (mod (ifix x) (pfix q)) (pfix q)))
+
+  (defthm nmod-reduction
+    (equal (nmod a q)
+           (- (pmod a q) (pfix q)))
+    :hints (("Goal" :in-theory (enable nmod pmod))))
+
+  (defthm mod-ctx-pmod-reduction
+    (implies
+     (and (natp x) (posp q))
+     (equal (mod-ctx (pmod x q) q)
+            (mod-ctx x q))))
+
+  (defthmd pmod-congruence
     (implies
      (and
-      (equal (* 2 (smod x q)) q)
-      (generic-invertible-p x q)
+      (integerp q)
       (integerp x)
-      (non-trivial-modulus q)
-      )
-     (equal q 1))
-    :rule-classes nil
-    :hints (("Goal" :use (:instance half-smod-implies-1
-                                    (k 1)))))
+      (nary::bind-context
+       (equal z (mod-ctx x q))))
+     (equal (pmod x q)
+            (pmod z q)))
+    :hints (("Goal" :in-theory (enable mod-ctx))))
     
-  )
+  (defthm pmod-negation
+    (implies
+     (and (integerp x) (posp q))
+     (equal (pmod (- x) q)
+            (if (equal (pmod x q) 0) 0
+              (- (nmod x q))))))
 
-(encapsulate
-    ()
-
-  (local (include-book "arithmetic-5/top" :dir :system))
-
-  (defthmd smod-plus
+  (defthm pmod-sum
     (implies
      (and
       (integerp a)
       (integerp b)
       (posp q))
-     (equal (smod (+ a b) q)
-            (if (not (equal (msign a q) (msign b q)))
-                (+ (smod a q)
-                   (smod b q))
-              ;; 1/2 is positive .. and they have the same
-              ;; so the result will be negative
-              (if (equal (msign a q) (msign (- a) q))
-                  (if (equal (msign b q) (msign (- b) q))
-                      (if (equal (smod a q) 0)
-                          (smod b q)
-                        (if (equal (smod b q) 0)
-                            (smod a q)
-                          0))
-                    (- (smod b q) (smod a q)))
-                (if (equal (msign b q) (msign (- b) q))
-                    (- (smod a q) (smod b q))
-                  (hide (smod (+ a b) q)))))))
-    :hints (("Goal" :in-theory (disable smod msign))
-            (and stable-under-simplificationp
-                 '(:in-theory (enable abs)
-                              :expand (hide (smod (+ a b) q))))))
+     (equal (pmod (+ a b) q)
+            (if (< (+ (pmod a q) (pmod b q)) q)
+                (+ (pmod a q) (pmod b q))
+              (- (+ (pmod a q) (pmod b q)) q)))))
 
+  ;; We just need the rest of the essential properties
+  ;; of pmod/nmod
+
+  (in-theory (disable pmod nmod))
+
+  (in-theory (enable pmod-congruence))
+  
   )
 
-(defun smallest-coefficient-pair-p (z k n m p x q)
+(defun smallest-coefficient-pair-p (z k m x q)
   ;; z : universally quantified variable
-  ;; k/m : coefficients
+  ;; k : negative coefficient
+  ;; m : positive coefficient
   ;; x : original value
   ;; q : modulus
   (let ((z (nfix z))
         (k (nfix k))
-        (n (nfix n))
         (m (nfix m))
-        (p (nfix p))
         (x (nfix x))
-        (q (posfix q)))
+        (q (pfix q)))
+    (and
+     (implies
+      (< (- (nmod (* z x) q)) (- (pmod (* m x) q) (nmod (* k x) q)))
+      (<= k z))
+     (implies
+      (and
+       (not (equal (pmod z q) 0))
+       (< (pmod (* z x) q) (- (pmod (* m x) q) (nmod (* k x) q))))
+      (<= m z)))))
+
+(encapsulate
+    ()
+
+  (local (in-theory (disable nfix-equiv ifix-equiv pfix-equiv)))
+  (local (in-theory (disable ifix nfix pfix abs)))
+  
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k m x q) 1)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k m x q) 2)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k m x q) 3)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k m x q) 4)
+  (defcong pfix-equiv equal (smallest-coefficient-pair-p z k m x q) 5)
+
+  (local
+   (defthm not-natp-nfix
+     (implies
+      (not (natp x))
+      (equal (nfix x) 0))
+     :hints (("Goal" :in-theory (enable nfix)))))
+
+  (defthm smallest-coefficient-pair-p-natp-congruence
     (implies
-     (and (not (equal (mod z q) 0))
-          (< (mabs (* z x) q) (+ (abs n) (abs p))))
-     (and (implies (equal (msign (* z x) q) (sign n)) (<= k z))
-          (implies (equal (msign (* z x) q) (sign k)) (<= m z))))))
-
-(defthm smallest-coefficient-pair-p-commutes
-  (equal (smallest-coefficient-pair-p z k n m p x q)
-         (smallest-coefficient-pair-p z m p k n x q))) 
-
-#|
-(defthm smallest-coefficient-pair-p-natp-congruence
-  (implies
-   (not (natp z))
-   (equal (smallest-coefficient-pair-p z k n m p x q)
-          (smallest-coefficient-pair-p 0 k n m p x q)))
-  :hints (("Goal" :in-theory (e/d (nfix smallest-coefficient-pair-p)
-                                  (posfix mabs msign)))))
+     (not (natp z))
+     (equal (smallest-coefficient-pair-p z k m x q)
+            (smallest-coefficient-pair-p 0 k m x q))))
+  
+)
 
 (defun-sk smallest-coefficient-pair (k m x q)
-  (forall (n) (smallest-coefficient-pair-p (nfix n) k m x q)))
+  (forall (z) (smallest-coefficient-pair-p (nfix z) k m x q))
+  :strengthen t)
 
-(defthmd smallest-coefficient-pair-commutes
-  (iff (smallest-coefficient-pair k m x q)
-       (smallest-coefficient-pair m k x q))
-  :hints (("Goal" :in-theory (disable nfix))
-          ("subgoal 1" :in-theory (disable smallest-coefficient-pair-necc)
-           :use (:instance smallest-coefficient-pair-necc
-                           (n (smallest-coefficient-pair-witness m k x q))))
-          ("subgoal 2" :in-theory (disable smallest-coefficient-pair-necc)
-           :use (:instance smallest-coefficient-pair-necc
-                           (n (smallest-coefficient-pair-witness k m x q))
-                           (k m)
-                           (m k)))))
+(encapsulate
+    ()
 
-(in-theory (disable smallest-coefficient-pair smallest-coefficient-pair-p-commutes))
+  (local (in-theory (disable nth smallest-coefficient-pair-p)))
+
+  (defun smallest-coefficient-pair-equiv (k1 m1 x1 q1 k2 m2 x2 q2)
+    (and (nfix-equiv k1 k2)
+         (nfix-equiv m1 m2)
+         (nfix-equiv x1 x2)
+         (pfix-equiv q1 q2)))
+
+  (quant::congruence smallest-coefficient-pair (k m x q)
+    (forall (z) (smallest-coefficient-pair-p (nfix z) k m x q))
+    :hyps smallest-coefficient-pair-equiv)
+
+  )
+
+(in-theory (disable smallest-coefficient-pair))
 
 (defthmd smallest-coefficient-pair-implication
   (implies
+   (smallest-coefficient-pair     k m x q)
+   (smallest-coefficient-pair-p z k m x q))
+  :hints (("Goal" :use smallest-coefficient-pair-necc)))
+
+;; (defthm times-zero
+;;   (equal (* 0 x) 0))
+
+;; (defthm zero-or-one
+;;   (implies
+;;    (and
+;;     (integerp q)
+;;     (< 2 q)
+;;     (natp m)
+;;     (natp x)
+;;     (smallest-coefficient-pair 0 m x q))
+;;    (or (equal m 1)
+;;        (equal m 0)))
+;;   :rule-classes nil
+;;   :otf-flg t
+;;   :hints (("Goal" :in-theory (disable smallest-coefficient-pair-implication)
+;;            :use (:instance smallest-coefficient-pair-implication
+;;                            (k 0)
+;;                            (z 1)))
+;;           (and stable-under-simplificationp
+;;                '(:in-theory (enable pmod)))))
+
+(defun delta (n m)
+  (abs (- (ifix n) (ifix m))))
+
+(in-theory (disable smallest-coefficient-pair-p))
+
+(defun non-trivial-modulus (q)
+  (declare (type t q))
+  (and (integerp q)
+       (< 2 q)))
+
+(include-book "arithmetic-5/top" :dir :system)
+
+(defthm pmod-zero
+  (equal (pmod 0 q) 0)
+  :hints (("Goal" :in-theory (enable pmod))))
+
+(include-book "coi/util/in-conclusion" :dir :system)
+(include-book "coi/util/skip-rewrite" :dir :system)
+
+(defthm force-pmod-rewriting
+  (implies
    (and
-    (natp n)
+    (syntaxp (symbolp z))
+    (in-conclusion-check (equal (pmod z q) k) :top t)
+    (integerp z)
+    (posp q))
+   (equal (equal (pmod z q) k)
+          (hide (rewrite-equiv (equal (mod-ctx z q) k)))))
+  :hints (("Goal" :expand ((:free (x) (hide x))))
+          (and stable-under-simplificationp
+               '(:in-theory (enable pmod mod-ctx)))))
+          
+(defthmd smallest-coefficient-pair-invariant-1
+  (implies
+   (and
     (natp k)
     (natp m)
     (natp x)
-    (posp q)
-    (smallest-coefficient-pair k m x q))
-   (smallest-coefficient-pair-p n k m x q))
-  :hints (("Goal" :use smallest-coefficient-pair-necc)))
+    (non-trivial-modulus q)
+    (generic-invertible-p x q)
+    (smallest-coefficient-pair k m x q)
+    (posp z)
+    (< k q)
+    (< m q)
+    (<= (- (nmod (* k x) q)) (pmod (* m x) q))
+    )
+   (smallest-coefficient-pair-p z k (+ k m) x q))
+  :hints (("Goal" :do-not-induct t
+           :do-not '(generalize eliminate-destructors)
+           :use (smallest-coefficient-pair-implication
+                 (:instance smallest-coefficient-pair-implication
+                            (z (delta z m)))
+                 (:instance smallest-coefficient-pair-implication
+                            (z (delta z k)))))
+          (and stable-under-simplificationp
+               '(:in-theory (enable smallest-coefficient-pair-p)))
+          ))
+
+(defthmd smallest-coefficient-pair-invariant-2
+  (implies
+   (and
+    (natp k)
+    (natp m)
+    (natp x)
+    (non-trivial-modulus q)
+    (generic-invertible-p x q)
+    (smallest-coefficient-pair k m x q)
+    (posp z)
+    (< k q)
+    (< m q)
+    (< (pmod (* m x) q) (- (nmod (* k x) q)))
+    )
+   (smallest-coefficient-pair-p z (+ k m) m x q))
+  :hints (("Goal" :do-not-induct t
+           :do-not '(generalize eliminate-destructors)
+           :use (smallest-coefficient-pair-implication
+                 (:instance smallest-coefficient-pair-implication
+                            (z (delta z m)))
+                 (:instance smallest-coefficient-pair-implication
+                            (z (delta z k)))
+                 #+joe
+                 (:instance smallest-coefficient-pair-implication
+                            (z (- q k)))
+                 #+joe
+                 (:instance smallest-coefficient-pair-implication
+                            (z (- q m)))))
+          (and stable-under-simplificationp
+               '(:in-theory (enable smallest-coefficient-pair-p)))
+          ;; (and stable-under-simplificationp
+          ;;      '(:in-theory (enable drop-pmod)))
+          ;; (and stable-under-simplificationp
+          ;;      '(:in-theory (enable zed
+          ;;                           pmod-congruence
+          ;;                           nmod-congruence
+          ;;                           nary::mod-rules)))
+          ))
+
+dag
 
 (encapsulate
     ()
@@ -537,9 +358,6 @@
   )
 
 (in-theory (disable smod))
-
-(defun delta (n m)
-  (- (ifix n) (ifix m)))
 
 ;; (local (include-book "arithmetic-5/top" :dir :system))
 

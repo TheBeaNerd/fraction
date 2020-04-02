@@ -41,6 +41,11 @@
 
 (defequiv ifix-equiv)
 
+(defthm ifix-equiv-ifix
+  (ifix-equiv (ifix x) x))
+
+(defcong ifix-equiv equal (ifix x) 1)
+
 (defun pfix (x)
   (declare (type t x))
   (if (posp x) x 1))
