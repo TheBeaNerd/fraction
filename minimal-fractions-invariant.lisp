@@ -366,3 +366,32 @@
           (equal p (pmod (* m x) q)))))
   :hints (("Subgoal 1" :use (smallest-coefficient-pair-invariant-1))
           ("Subgoal 2" :use (smallest-coefficient-pair-invariant-2))))
+
+
+(encapsulate
+    ()
+
+  (local
+   (defthm smallest-coefficient-pair-p-init-helper
+     (implies
+      (and
+       (posp z)
+       (natp x)
+       (non-trivial-modulus q))
+      (and (smallest-coefficient-pair-p z 0 1 x q)
+           (smallest-coefficient-pair-p z 1 0 x q)))
+     :hints (("Goal" :in-theory (enable MINIMAL-FRACTIONS-PAIR-P
+                                        smallest-coefficient-pair-p)))))
+
+  (defthm smallest-coefficient-pair-init
+    (implies
+     (and
+      (natp x)
+      (non-trivial-modulus q))
+     (and (smallest-coefficient-pair 0 1 x q)
+          (smallest-coefficient-pair 1 0 x q)))
+    :hints (("Goal" :in-theory (e/d (smallest-coefficient-pair)
+                                    (PFIX-EQUIV-IMPLIES-EQUAL-SMALLEST-COEFFICIENT-PAIR-P-1)))))
+  
+  )
+  
