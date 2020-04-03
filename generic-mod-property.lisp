@@ -22,6 +22,11 @@
 
 (include-book "coi/quantification/quantified-congruence" :dir :system)
 
+(defthm natp-nfix
+  (implies
+   (natp x)
+   (equal (nfix x) x)))
+
 (defun nfix-equiv (x y)
   (equal (nfix x) (nfix y)))
 
@@ -49,6 +54,11 @@
 (defun pfix (x)
   (declare (type t x))
   (if (posp x) x 1))
+
+(defthm posp-pfix-identity
+  (implies
+   (posp x)
+   (equal (pfix x) x)))
 
 (defthm posp-pfix
   (posp (pfix x))
