@@ -395,3 +395,199 @@
   
   )
   
+;;
+;;
+;;
+
+(defthmd magnitude-invariant
+  (implies
+   (and
+    (natp k)
+    (integerp n)
+    (< n 0)
+    (natp m)
+    (natp p)
+    (equal (- (* k p) (* m n)) c))
+   (mv-let (k n m p) (step-minimal-fractions-pair k n m p)
+           (equal (- (* k p) (* m n)) c))))
+
+(encapsulate
+    ()
+
+  (defun lt-sqrt (x q)
+    (< (* x x) q))
+     
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (local
+   (encapsulate
+       ()
+
+     (defun num-equal (x y)
+       (equal x y))
+     
+     (defun prod (x y)
+       (* x y))
+     
+     (defthmd magnitude-invariant-helper
+       (implies
+        (and
+         (natp k)
+         (integerp n)
+         (< n 0)
+         (natp m)
+         (natp p)
+         (num-equal (- (prod k p) (prod m n)) c))
+        (mv-let (k n m p) (step-minimal-fractions-pair k n m p)
+                (num-equal (- (prod k p) (prod m n)) c))))
+     
+     (defthm negative-product
+       (equal (- (prod x y))
+              (prod x (- y))))
+     
+     (defthm posp-prod
+       (implies
+        (and
+         (posp x)
+         (posp y))
+        (posp (prod x y))))
+     
+     (defthmd lte-square-lte
+       (implies
+        (and
+         (natp a)
+         (natp b)
+         (<= (* a a) (* b b)))
+        (<= a b))
+       :hints (("Goal" :nonlinearp t)))
+     
+     (defthmd lte-property
+       (implies
+        (and
+         (natp a)
+         (natp b)
+         (natp c)
+         (<= a b)
+         (<= a c))
+        (<= (* a a) (* b c)))
+       :hints (("Goal" :nonlinearp t)))
+     
+     (defthm product-of-nlt-sqrt
+       (implies
+        (and
+         (natp x)
+         (natp y)
+         (natp c)
+         (not (lt-sqrt x c))
+         (not (lt-sqrt y c)))
+        (<= c (prod x y)))
+       :hints (("Goal" :use ((:instance lte-property
+                                        (a c)
+                                        (b (* x x))
+                                        (c (* y y))
+                                        )
+                             (:instance lte-square-lte
+                                        (a c)
+                                        (b (* x y)))
+                             ))))
+
+     (defthm not-num-equal-1
+       (implies
+        (and
+         (posp x)
+         (posp y)
+         (<= c x))
+        (not (num-equal (+ x y) c))))
+     
+     (defthm not-num-equal-2
+       (implies
+        (and
+         (posp x)
+         (posp y)
+         (<= c y))
+        (not (num-equal (+ x y) c))))
+     
+     (defthm negative-lt-sqrt
+       (implies
+        (< n 0)
+        (equal (lt-sqrt n c)
+               (lt-sqrt (- n) c))))
+     
+     (in-theory (disable prod num-equal lt-sqrt))
+     
+     (defthm one-fraction-lt-sqrt-helper-1
+       (implies
+        (and
+         (posp k)
+         (integerp n)
+         (< n 0)
+         (posp m)
+         (posp p)
+         (natp c)
+         (not (equal p (- n)))
+         (num-equal (- (prod k p) (prod m n)) c)
+         (lt-sqrt k c)
+         (lt-sqrt m c)
+         (not (lt-sqrt (+ k m) c))
+         (not (lt-sqrt p c))
+         (not (lt-sqrt n c)))
+        nil)
+       :rule-classes nil
+       :hints (("Goal" :use magnitude-invariant-helper)))
+
+     (defthm one-fraction-lt-sqrt-helper-2
+       (implies
+        (and
+         (posp k)
+         (integerp n)
+         (< n 0)
+         (posp m)
+         (posp p)
+         (natp c)
+         (not (equal p (- n)))
+         (num-equal (- (prod k p) (prod m n)) c)
+         (lt-sqrt k c)
+         (lt-sqrt m c)
+         (not (lt-sqrt (+ k m) c)))
+        (or (lt-sqrt p c)
+            (lt-sqrt n c)))
+       :rule-classes nil
+       :hints (("Goal" :use one-fraction-lt-sqrt-helper-1)))
+
+     ))
+
+  (defthm one-fraction-lt-sqrt
+    (implies
+     (and
+      (posp k)
+      (integerp n)
+      (< n 0)
+      (posp m)
+      (posp p)
+      (natp c)
+      (not (equal p (- n)))
+      (equal (- (* k p) (* m n)) c)
+      (lt-sqrt k c)
+      (lt-sqrt m c)
+      (not (lt-sqrt (+ k m) c)))
+     (or (lt-sqrt p c)
+         (lt-sqrt n c)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory '(num-equal prod)
+             :use one-fraction-lt-sqrt-helper-2)))
+
+  )
+
+;; k n m p
+;; (equal (- (* k p) (* m n)) q)
+;; 1 -v 0 Q
+;; (equal (- (* 1 Q) (* 0 -v)) q)
+;; 0 -Q 1 v
+;; (equal (- (* 0 v) (* 1 Q)) q)
+;;
+;; I think we need to modify our invaiant.
+;; - it will simplify things in the long run.
+;;
+
+;; 1 -v 1 Q-v
+
