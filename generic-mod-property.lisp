@@ -129,20 +129,9 @@
 
   (quant::congruence generic-invertible-p (x p)
    (exists (a) (generic-invertible-predicate a x p))
-   :hyps (lambda (x1 p1 x2 p2) (and (ifix-equiv x1 x2) (pfix-equiv p1 p2))))
+   :congruences ((x ifix-equiv)
+                 (p pfix-equiv)))
 
-  (defcong ifix-equiv iff (generic-invertible-p x p) 1
-    :hints (("Goal" :use (:instance generic-invertible-p-congruence
-                                    (x1 x-equiv)
-                                    (p1 p)
-                                    ))))
-  
-  (defcong pfix-equiv iff (generic-invertible-p x p) 2
-    :hints (("Goal" :use (:instance generic-invertible-p-congruence
-                                    (x1 x)
-                                    (p1 p-equiv)
-                                    ))))
-  
   )
 
 (defthm zero-not-invertible

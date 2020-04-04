@@ -438,16 +438,17 @@
   (equal (smallest-coefficient-pair-p z k n m p x q)
          (smallest-coefficient-pair-p z m p k n x q))) 
 
+#+joe
 (encapsulate
     ()
   (local (in-theory (disable abs msign sign)))
-  (defcong nfix-equiv equal smallest-coefficient-pair-p (z k n m p x q) 1)
-  (defcong nfix-equiv equal smallest-coefficient-pair-p (z k n m p x q) 2)
-  (defcong nfix-equiv equal smallest-coefficient-pair-p (z k n m p x q) 3)
-  (defcong nfix-equiv equal smallest-coefficient-pair-p (z k n m p x q) 4)
-  (defcong nfix-equiv equal smallest-coefficient-pair-p (z k n m p x q) 5)
-  (defcong nfix-equiv equal smallest-coefficient-pair-p (z k n m p x q) 6)
-  (defcong pfix-equiv equal smallest-coefficient-pair-p (z k n m p x q) 7)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k n m p x q) 1)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k n m p x q) 2)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k n m p x q) 3)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k n m p x q) 4)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k n m p x q) 5)
+  (defcong nfix-equiv equal (smallest-coefficient-pair-p z k n m p x q) 6)
+  (defcong pfix-equiv equal (smallest-coefficient-pair-p z k n m p x q) 7)
   )
  
 
