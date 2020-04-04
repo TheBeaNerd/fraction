@@ -583,11 +583,44 @@
 ;; 1 -v 0 Q
 ;; (equal (- (* 1 Q) (* 0 -v)) q)
 ;; 0 -Q 1 v
-;; (equal (- (* 0 v) (* 1 Q)) q)
-;;
-;; I think we need to modify our invaiant.
-;; - it will simplify things in the long run.
-;;
+;; (equal (- (* 0 v) (* 1 -Q)) q)
 
-;; 1 -v 1 Q-v
+(defun fractions-listp (list)
+  (declare (type t list))
+  (if (not (consp list)) (null list)
+    (let ((entry (car list)))
+      (case-match entry
+        ((k n m p)
+         (and (natp k)
+              (negp n)
+              (natp m)
+              (natp p)
+              (fractions-listp (cdr list))))
+        (& nil)))))
 
+(def::un minimal-fractions-list-rec (k n m p)
+  (declare (xargs :signature ((natp negp natp natp) fractions-listp)
+                  :measure (+ (nfix (- (ifix n))) (nfix p))))
+  (if (not (and (< (ifix n) 0) (< 0 (nfix p)))) (list (list k n m p))
+    (cons (list k n m p)
+          (mv-let (k n m p) (step-minimal-fractions-pair k n m p)
+            (minimal-fractions-list-rec k n m p)))))
+
+#+joe
+(def::un minimal-fractions-list (x q)
+  (declare (xargs :signature ((integerp posp) fractions-listp)))
+  (let ((x (pmod x q)))
+    (let ((g (xgcd x q)))
+      (if (not (equal g 1)) nil
+        (let ((k 0)
+              (n (- q))
+              (m 1)
+              (p x))
+          (minimal-fractions-list-rec k n m p))))))
+
+          
+;; (def::un minimal-fraction-rec (x q)
+;;   )
+
+;; (def::un minimal-fraction (x q)
+;;   )
