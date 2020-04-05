@@ -7,4 +7,3 @@
 ;;
 ;;
 (ld "coi/nary/package.lsp" :dir :system)
-(ld "pigeon-defpkg.lsp")
