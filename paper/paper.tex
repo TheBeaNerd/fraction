@@ -1,5 +1,6 @@
 \documentclass[submission,copyright,creativecommons]{eptcs}
 \providecommand{\event}{ACL2 2020} % Name of the event you are submitting to
+\usepackage{setspace}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 % \usepackage{breakurl}              % Not needed if you use pdflatex only.
@@ -28,195 +29,164 @@
 
 \begin{abstract}
 
-We say that $x \in \mathbf{Z}/m\mathbf{Z}$ is \emph{represented} by
-the fraction $\frac{N}{D}$ when $x*D \equiv N \Mod{M}$ and $D > 0$.
-This definition admits many possible fractional representations.  We
-say that $\frac{N}{D}$ is a \emph{minimal} representation of $x$ if no
-smaller denominator ($D$) results in a numerator with a magnitude less
-then $N$.  We introduce a function for computing such fractional
+We say that the fraction $\frac{N}{D}$ \emph{represents} $x \in
+\mathbf{Z}/m\mathbf{Z}$ when $x*D \equiv N \Mod{M}$.  This definition
+admits many possible fractional representations.  We say that
+$\frac{N}{D}$ is a \emph{minimal} representation of $x$ if no smaller
+denominator ($D$) results in a numerator with a magnitude less then
+$N$.  We introduce a function for computing such fractional
 representations and prove that it generates minimal fractions.  We
 also prove that every $x \in \mathbf{Z}/m\mathbf{Z}$ has a minimal
-fractional representation in which the magnitude of both $N$ and $D$
-are less than $\sqrt{M}$.
+fractional representation in which the magnitude of $N$ and $D$
+are less or equal to $\sqrt{M}$.
 
 \end{abstract}
 
 \section{Introduction}
 
-In saying that $x \in \mathbf{Z}/m\mathbf{Z}$ is \emph{represented}
-by\footnote{ We might say ``congruent to'' when $D \perp M$ but we don't
-require this condition.  }  the fraction $\frac{N}{D}$ when $x*D \equiv N
-\Mod{M}$ and $D > 0$ we admit many possible fractional representations
-of $x$, some possibly not reduced.  For example, $7 \bmod 17$ has the
+In saying that the fraction $\frac{N}{D}$ \emph{represents}\footnote{
+  We might say ``congruent to'' when $D \perp M$ but we don't require
+  this condition.  }  $x \in \mathbf{Z}/m\mathbf{Z}$ when $x*D \equiv
+N \Mod{M}$ we admit many possible fractional representations of $x$,
+some possibly not reduced.  For example, $7 \Mod{17}$ has the
 following representations:
-
+\begin{spacing}{1.0}
+{\small
 \[
 \{
-\,7/1,\, 14/2,\, 4/3,\, 11/4,\, 1/5,\, 8/6,\, 15/7,\, 5/8,\, 12/9 ,\, 2/10,\, 9/11,\, 16/12 ,\,6/13,\, 13/14,\, 3/15,\, 10/16 \,
+\,7/1,\, 14/2,\, 4/3,\, 11/4,\, 1/5,\, 8/6,\, 15/7,\, 5/8,\, 12/9 ,\, 2/10,\, 9/11,\, 16/12 ,\,6/13,\, 13/14,\, 3/15,\, 10/16,\, 0/17 \,
 \}
 \]
-
-In this work we employ \emph{signed residues}.  A signed
-residue expresses residues closer to 0 as positive values and
-residues closer to $M$ as negative values.  
-%% The \texttt{smod} function computes signed residues.
-%% \footnote{
-%% Note that \texttt{(mod (smod x m) m) = (mod x m)}.
-%% }
-%%
-%% \begin{verbatim}
-%% (defun smod (x m)
-%%   (let ((x (mod x m)))
-%%     (if (<= (* 2 x) m) x (- x m))))
-%% \end{verbatim}
-%%
-The signed residues of the numbers $0\dots16 \Mod{17}$ are:
-
+}
+\end{spacing}
+\begin{spacing}{1.0}
+In this work we consider both positive and negative residues in the
+numerator.  A positive residue is defined as $(x*D \bmod M)$ for $0 <
+D \leq Q$ while a negative residue is defined as $(x*D \bmod M) - M$
+for $0 \leq D < Q$.  Using the negative residue the fractional
+representations of $7 \Mod{17}$ are:
+\end{spacing}
+\begin{spacing}{1.0}
+{\footnotesize
 \[
 \{
-\,0,\,1,\,2,\,3,\,4,\,5,\,6,\,7,\,8,\,\sneg8,\,\sneg7,\,\sneg6,\,\sneg5,\,\sneg4,\,\sneg3,\,\sneg2,\,\sneg1\,
+\sneg17/0,\,
+\sneg10/1,\,
+\sneg3/2,\,
+\sneg13/3,\,
+\sneg6/4,\,
+\sneg16/5,\,
+\sneg9/6,\,
+\sneg2/7,\,
+\sneg12/8,\,
+\sneg5/9,\,
+\sneg15/10,\,
+\sneg8/11,\,
+\sneg1/12,\,
+\sneg11/13,\,
+\sneg4/14,\,
+\sneg14/15,\,
+\sneg7/16\,
 \}
 \]
+}
+\end{spacing}
+Within the same residue class (positive or negative), we say that
+$\frac{N}{D}$ is a \emph{minimal} representation of $x$ if no
+denominator smaller than ($D$) results in a numerator with a magnitude
+less then $N$.  ($7/1$) is minimal for $7 \Mod{17}$ simply because we
+don't consider positive residues with denominators less than 1.  The
+fraction ($\sneg3/2$) is also minimal because $\lvert \sneg3 \rvert$ is
+less then the magnitude of the numerators of both negative fractions
+with denominators less than $2$, ($-17/0$) and ($-10/1$).
+($\sneg6/4$), however, is not minimal because ($\sneg3/2$) has both a
+smaller magnitude numerator and a smaller denominator.
 
-Using signed residues in the numerator, $7 \bmod 17$ has the
-following fractional representations:
-
-\[
-\{
-\,7/1,\,\sneg3/2,\,4/3,\,\sneg6/4,\,1/5,\,8/6,\,\sneg2/7,\,5/8,\,\sneg5/9,\,2/10,\,\sneg8/11,\,\sneg1/12,\,6/13,\,\sneg4/14,\,3/15,\,\sneg7/16\,
-\}
-\]
-
-We say that $\frac{N}{D}$ is a \emph{minimal} representation of $x$ if
-no smaller denominator ($D$) results in a numerator with a magnitude
-less then $N$, where the magnitude of $N$ is the absolute value
-of the signed residue.
-%% \begin{verbatim}
-%% (defun mabs (x m)
-%%   (abs (smod x m)))
-%% \end{verbatim}
-In the case of $7 \bmod 17$, ($7/1$) is trivially minimal because we
-don't consider denominators less than 1.  ($\sneg3/2$) is also minimal because
-the only fraction with a denominator less then 2 is ($7/1$) and 
-$\lvert \sneg3 \rvert < \lvert 7\rvert$. 
-($\sneg6/4$), however, is not minimal because both ($4/3$)
-and ($\sneg3/2$) have numerators and denominators with smaller magnitudes.
+Our proof of correctness actually requires a stronger, more general
+notion of minimality that is invariant over our algorithm for computing
+minimal fractions.  This more general invariant is expressed with
+respect to a pair of fractions: one negative residual and one positive
+residual.  The pair is considered minimal if, for all possible
+denominators ($d$), if the magnitude of either the positive or
+negative residual of $d*x$ is less than the \emph{sum} of the
+magnitudes of the numerators of the pair of fractions, then $d$ must
+be greater than or equal to the denominator of the fraction with the
+same residual sign.  Under this generalization the pair of fractions
+$(\sneg3/2,\,4/3)$ is considered minimal because no denominator less
+than $3$ has a positive residual and no denominator less than $2$ has
+a negative residual less than $\lvert \sneg3 \rvert + \lvert 4 \rvert
+= 7$.
 
 Our computation of minimal fractions relies on the following property
-of fractional representations, which bears a striking resemblance to
-the mediant computation used in the generation of Farey sequences~\cite{Farey}
-except that $N_1*D_2 - N_2*D_1$ equals 0 rather than 1 $\Mod{M}$:
+of the mediant computation\footnote{As used in the generation of Farey
+  sequences~\cite{Farey} except that, in our case, $N_1*D_2 - N_2*D_1$
+  is equal to $M$ rather than $1$}:
 
 \begin{equation*}
 x \equiv \frac{N_1}{D_1} \; \land \;
 x \equiv \frac{N_2}{D_2} \; \implies \;
-x \equiv \frac{N_1 + N_2}{D_1 + D_2}
+x \equiv \frac{N_1 + N_2}{D_1 + D_2} \; \; \Mod{M}
 \end{equation*}
 
-Note that the mediant of two fractions whose numerators differ in sign
-produces a residue whose numerator is smaller in magnitude than the
-larger of the magnitudes of the two original numerators.  Conceptually
-the algorithm takes as input two minimal fractions with differing
-signs, initially $x/1$ and $(x-M)/1$.  It then recursively replaces
-the fraction with the largest magnitute numerator with the mediant of
-the two orignal fractions until one of the numerators is zero.  The
-minimal fractional pairs generated by this algorithm for $7 \bmod 17$
-are listed below.
+Our algorithm takes as input two minimal fractions with differing
+signs, initially $(x-M)/0$ and $x/1$ (which are trivially minimal).  It
+then recursively replaces the fraction with the largest magnitude
+numerator with the mediant of the two original fractions until one of
+the numerators is zero.  The key to the termination of our algorithm
+is the observation that the mediant of two fractions whose numerators
+differ in sign is a fraction whose numerator is smaller in magnitude
+than the larger of the magnitudes of the two original numerators.  We
+prove that this algorithm preserves our notion of minimal fractional pairs.
+The minimal fractional pairs generated by our algorithm
+for $7 \Mod{17}$ are listed below.
 
+{\small
 \[
-(\sneg10/1,\,7/1),\,(\sneg3/2,\,7/1),\,(\sneg3/2,\,4/3),\,(\sneg3/2,\,1/5),\,(\sneg2/7,\,1/5),\,(\sneg1/12,\,1/5)
+(\sneg17/0,\,7/1),\,
+(\sneg10/1,\,7/1),\,(\sneg3/2,\,7/1),\,(\sneg3/2,\,4/3),\,(\sneg3/2,\,1/5),\,(\sneg2/7,\,1/5),\,(\sneg1/12,\,1/5),\,
+(\sneg1/12,\,0/17)\,
 \]
+}
 
-Over the pairs of generated fractions we prove that a generalization
-of our minimality condition, universally quantified over all non-zero
-denominators ($d$), is invariant.  It assert that, if the magnitude of
-the residual of $d*x$ is less than the sum of the magnitudes of the
-numerators of the pair of fractions, then $d$ must be greater than or
-equal to the denominator of the fraction whose numerator has the same
-sign as the residual $d*x$ (ie: $d*x$ is either not minimal or $d$ is
-equal to the denominator of one of the pairs).  Note that under this
-generalization the pair of fractions $(\sneg3/2,\,4/3)$ is considered
-minimal even though ($4/3$) is not considered minimal under our original
-definition because ($\sneg3/2$) has both a numerator and denominator
-with smaller magnitudes.
-
-%% If this minimum difference between the numerators is less than the
-%% current minimal numerator, then the current fraction is not minimal
-%% because the difference between sum or difference between the
-%% denominators would result in a fraction with a smaller denominator
-%% whose numerator is also smaller.
-
-%% \begin{verbatim}
-%% (implies
-%%   (and
-%%     (< (smod (* a x) m) 0)
-%%     (< 0 (smod (* b x) m))
-%%     (< (mabs (* a x) m) (mabs (* b x) m)))
-%%   (< (mabs (* (+ a b) x) m) (mabs (* b x) m)))
-%% \end{verbatim}
-
-In addition to this invariant we prove that every $x$ has a fractional
-representation in which both $N$ and $D$ are less than $\sqrt{M}$.
-This result follows from the fact that $N_1*D_2 - N_2*D_1 = \pm M$ is
-invariant.  Consider the case where $N_1 < \sqrt{M}$ and $N_2 <
-\sqrt{M}$ but $N_1 + N_2 \geq \sqrt{M}$.  If both $D_1 > \sqrt{M}$
-and $D_2 > \sqrt{M}$, then in the following step, $(N_1 + N_2)*D_i$
-will be greater than $M$, violating our invariant.  Thus, at least
-one $D_i < \sqrt{M}$.
-
-%% Informally this assertion is supported by the observation that the
-%% size of the $F_n \sim \dfrac{3*n^2}{\pi^2}$.  Including the
-%% reciporicals and negations of these fractions, we get approximately
-%% $\dfrac{12*n^2}{\pi^2} > n^2$ unique fractions, more than enough to
-%% represent the residuals of $M$ if $n = \lfloor\sqrt{M}\rfloor$.  
-
-%% A simple counting argument suggests that the maximum difference
-%% between elements 
-
-%% If k,m < sqrt(Q) but k + m > sqrt(Q) then one of the residuals must 
-%% also be less than sqrt(Q).  If both residuals are greater than that,
-%% then
-
-%% k,n m,p
-%%
-%% nm - kp = Q
-%%
-%% If k,n < sqrt(Q) and n,p > sqrt(Q) then 
-%%
-%% k,n m,p
-%% (k+m),(n-p) m,p
-%%
-%% But now, both (k+m) and p are greater than sqrt(Q)
-
-%% A correlary to this is that the minimal fraction of an integer $x$
-%% whose signed residue magnitude is less than $\sqrt{M}$ is $x/1$.  This
-%% follows from the observation that the numerator required to make the
-%% residue $x*N$ smaller than $x$ will be larger than $\sqrt{M}$.
+In addition to our minimality invariant we prove that every $x$ has a fractional
+representation in which both $N$ and $D$ are less than or equal to
+$\sqrt{M}$.  This result follows from the fact that $N_1*D_2 - N_2*D_1 = M$
+is invariant.  Informally, consider the case where $N_1 < \sqrt{M}$ and
+$N_2 < \sqrt{M}$ but $N_1 + N_2 \geq \sqrt{M}$.  If both $D_1 > \sqrt{M}$ and
+$D_2 > \sqrt{M}$, then in the following step, $(N_1 + N_2)*D_i$ will be
+greater than $M$, violating our invariant.  Thus, at
+least one $D_i < \sqrt{M}$.
 
 It is possible for a number to have more than one representation whose
-coefficients are less than $\sqrt{M}$.  For example, $12 \bmod 17$ is
+coefficients are less than $\sqrt{M}$.  For example, $12 \Mod{17}$ is
 represented by both ($\sneg3/4$) and ($2/3$), both of whose
 coefficient magnitudes are less than $\sqrt{17}$.  Deciding which is
-\emph{the minimum} is a judgement call.  If we say that the
-minimum fraction is the one with the smallest maximum coefficient, we
-would select ($2/3$) as the minimum fractional representation of $12 \bmod 17$.  
-Using this minimality criteria the minimum fractional
-representations for each of the numbers $1\dots16 \Mod{17}$ are:
+\emph{the minimum} is a judgment call.  We say that the minimum
+fraction is the one with the smallest maximum coefficient, resolving
+ties with the smaller denominator.  Under those conditions the
+minimum fractional representation of $12 \Mod{17}$ is ($2/3$).  Using
+this minimality criteria the minimum fractional representations for
+each of the numbers $1\dots16 \Mod{17}$ are:
 
 \[
 \{
-\,1,\,2,\,3,\,4,\,\sneg2/3,\,1/3,\,\sneg3/2,\,\sneg1/2,\,1/2,\,3/2,\,\sneg1/3,\,2/3,\,4,\,\sneg3,\,\sneg2,\,\sneg1\,
+\,1,\,2,\,3,\,4,\,\sneg2/3,\,1/3,\,\sneg3/2,\,\sneg1/2,\,1/2,\,3/2,\,\sneg1/3,\,2/3,\,\sneg4,\,\sneg3,\,\sneg2,\,\sneg1\,
 \}
 \]
 
 \section{Conclusion}
 
-In the cryptographic community there is interest in finding smooth
-numbers that result from specific computations.  The quadratic sieve
-algorithm~\cite{Sieve}, for example, attempts to find small numbers (numbers on the
-order of $\sqrt{M}$) in hopes of factoring them into a smooth factor
-base.  We show that any residue relatively prime to $M$ can be
-expressed as a quotient of two numbers less than $\sqrt{M}$.
+We have verified an algorithm for computing minimal fractional
+representations $\frac{N}{D}$ of numbers $x \in
+\mathbf{Z}/m\mathbf{Z}$.  We also proved that all such numbers have a
+minimal representation in which the magnitude of both $N$ and $D$ are
+less than or equal to $\sqrt{M}$.  In the cryptographic community
+there is interest in finding smooth numbers that result from specific
+computations.  The quadratic sieve algorithm~\cite{Sieve}, for
+example, attempts to find small numbers (numbers on the order of
+$\sqrt{M}$) in hopes of factoring them into a smooth factor base.  We
+show that any residue relatively prime to $M$ can be expressed as a
+quotient of two numbers less than or equal to $\sqrt{M}$.
 
 \bibliography{generic}{}
 \bibliographystyle{eptcs}
