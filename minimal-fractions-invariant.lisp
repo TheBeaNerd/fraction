@@ -527,8 +527,7 @@
        (implies
         (and
          (natp k)
-         (integerp n)
-         (< n 0)
+         (negp n)
          (natp m)
          (natp p)
          (num-equal (- (prod k p) (prod m n)) c))
@@ -613,8 +612,7 @@
        (implies
         (and
          (posp k)
-         (integerp n)
-         (< n 0)
+         (negp n)
          (posp m)
          (posp p)
          (natp c)
@@ -633,8 +631,7 @@
        (implies
         (and
          (posp k)
-         (integerp n)
-         (< n 0)
+         (negp n)
          (posp m)
          (posp p)
          (natp c)
@@ -654,8 +651,7 @@
     (implies
      (and
       (posp k)
-      (integerp n)
-      (< n 0)
+      (negp n)
       (posp m)
       (posp p)
       (natp c)
@@ -694,8 +690,7 @@
     (implies
      (and
       (posp k)
-      (integerp n)
-      (< n 0)
+      (negp n)
       (posp m)
       (posp p)
       (natp c)
