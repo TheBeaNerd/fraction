@@ -1,6 +1,108 @@
+;;
+;; Copyright (C) 2020, David Greve
+;; License: A 3-clause BSD license.
+;; See the LICENSE file distributed with ACL2.
+;;
 (in-package "ACL2")
 
-;;(include-book "generic-mod-property")
+;; We say x is represented by the fraction N/D when x * D = N % Q.
+;; This definition admits many possible fractional representations.
+;; We say that N/D is a minimal representation of x if no smaller
+;; denominator results in a numerator with a magnitude less than N.
+;; This book introduces a function for computing such fractional
+;; representations and proves that it generates minimal fractions.  We
+;; also prove that every x has a minimal fractional representation in
+;; which the magnitude of N and D are less than or equal to (sqrt Q).
+
+;; Throughout this book we use the following notation:
+;;
+;; z : universally quantified variable
+;; k : negative coefficient (denominator)
+;; n : negative numerator
+;; m : positive coefficient (denominator)
+;; p : positive numerator
+;; x : original value = n/k = p/m
+;; q : modulus
+
+;; Our generalized universally quantified minimal fractions invariant
+;; can be represented logically as:
+;; 
+;; (implies
+;;  (and
+;;   (equal n (nmod (* k x) q))
+;;   (equal p (pmod (* m x) q)))
+;;  (forall (z)
+;;    (and
+;;     (implies
+;;      (< (- (nmod (* z x) q)) (- p n))
+;;      (<= k z))
+;;     (implies
+;;      (and
+;;       (not (equal (pmod z q) 0))
+;;       (< (pmod (* z x) q) (- p n)))
+;;      (<= m z)))))
+;;
+;; We also prove that our algorithm preserves the following invariant:
+;;
+;; (implies
+;;   (and
+;;     (equal n (nmod (* k x) q))
+;;     (equal p (pmod (* m x) q)))
+;;   (equal (- (* k p) (* m n)) q))
+;;
+;; We use this invariant to prove that every number has a minimal
+;; fractional representation in which the coefficients are less than
+;; the square root of the modulus (unless the resulting numerator is
+;; exactly the square root of the modulus)
+
+;; (defthm lt-sqrt-minimum-fraction
+;;   (implies
+;;    (and
+;;     (integerp x)
+;;     (non-trivial-modulus q))
+;;    (mv-let (n d) (minimum-fraction x q)
+;;      (or (and (equal (* n n) q)
+;;               (lt-sqrt d q))
+;;          (and (lt-sqrt n q)
+;;               (lt-sqrt d q)))))
+
+;; The function (print-all-minimal-fractions x q) prints all of the
+;; minimal fractions for x mod q.
+
+;; ACL2 !>(print-all-minimal-fractions 7 17)
+;; -17/0 7/1
+;; -10/1 7/1
+;; -3/2 7/1
+;; -3/2 4/3
+;; -3/2 1/5
+;; -2/7 1/5
+;; -1/12 1/5
+;; -1/12 0/17
+;; T
+;;
+;; The function (print-all-minimum-fractions q) prints the
+;; minimum fractional representaition of all of the numbers
+;; in the range (1 .. q-1)
+;;
+;; ACL2 !>(print-all-minimum-fractions 17)
+;; 1 : 1/1
+;; 2 : 2/1
+;; 3 : 3/1
+;; 4 : 4/1
+;; 5 : -2/3
+;; 6 : 1/3
+;; 7 : -3/2
+;; 8 : -1/2
+;; 9 : 1/2
+;; 10 : 3/2
+;; 11 : -1/3
+;; 12 : 2/3
+;; 13 : 1/4
+;; 14 : -3/1
+;; 15 : -2/1
+;; 16 : -1/1
+;; T
+
 (include-book "coi/quantification/quantified-congruence" :dir :system)
 (include-book "coi/util/skip-rewrite" :dir :system)
 (include-book "nary")
@@ -185,8 +287,10 @@
 
 (defun minimal-fractions-pair-p (z k n m p x q)
   ;; z : universally quantified variable
-  ;; k : negative coefficient
-  ;; m : positive coefficient
+  ;; k : negative coefficient (denominator)
+  ;; n : negative numerator
+  ;; m : positive coefficient (denominator)
+  ;; p : positive numerator
   ;; x : original value
   ;; q : modulus
   (let ((z (pfix z))
@@ -231,19 +335,6 @@
   (defcong nfix-equiv equal (smallest-coefficient-pair-p z k m x q) 4)
   (defcong pfix-equiv equal (smallest-coefficient-pair-p z k m x q) 5)
 
-  ;; (local
-  ;;  (defthm not-natp-nfix
-  ;;    (implies
-  ;;     (not (natp x))
-  ;;     (equal (nfix x) 0))
-  ;;    :hints (("Goal" :in-theory (enable nfix)))))
-
-  ;; (defthm smallest-coefficient-pair-p-natp-congruence
-  ;;   (implies
-  ;;    (not (natp z))
-  ;;    (equal (smallest-coefficient-pair-p z k m x q)
-  ;;           (smallest-coefficient-pair-p 0 k m x q))))
-  
 )
 
 (defun-sk smallest-coefficient-pair (k m x q)
@@ -297,11 +388,8 @@
          (natp m)
          (natp x)
          (non-trivial-modulus q)
-         ;;(generic-invertible-p x q)
          (smallest-coefficient-pair k m x q)
          (posp a)
-         ;;(<= k q)
-         ;;(<= m q)
          (<= (- (nmod (* k x) q)) (pmod (* m x) q))
          )
         (smallest-coefficient-pair-p a k (+ k m) x q))
@@ -324,11 +412,8 @@
          (natp m)
          (natp x)
          (non-trivial-modulus q)
-         ;;(generic-invertible-p x q)
          (smallest-coefficient-pair k m x q)
          (posp a)
-         ;;(<= k q)
-         ;;(<= m q)
          (< (pmod (* m x) q) (- (nmod (* k x) q)))
          )
         (smallest-coefficient-pair-p a (+ k m) m x q))
@@ -353,10 +438,7 @@
       (natp m)
       (natp x)
       (non-trivial-modulus q)
-      ;;(generic-invertible-p x q)
       (smallest-coefficient-pair k m x q)
-      ;;(<= k q)
-      ;;(<= m q)
       (<= (- (nmod (* k x) q)) (pmod (* m x) q)))
      (smallest-coefficient-pair k (+ k m) x q))
     :hints (("Goal" :in-theory (disable pfix)
@@ -372,10 +454,7 @@
       (natp m)
       (natp x)
       (non-trivial-modulus q)
-      ;;(generic-invertible-p x q)
       (smallest-coefficient-pair k m x q)
-      ;;(<= k q)
-      ;;(<= m q)
       (< (pmod (* m x) q) (- (nmod (* k x) q)))
       )
      (smallest-coefficient-pair (+ k m) m x q))
@@ -416,9 +495,6 @@
     (natp m)
     (natp x)
     (non-trivial-modulus q)
-    ;;(generic-invertible-p x q)
-    ;;(<= k q)
-    ;;(<= m q)
     (equal n (nmod (* k x) q))
     (equal p (pmod (* m x) q)))
    (mv-let (k n m p) (step-minimal-fractions-pair k n m p)
@@ -427,99 +503,6 @@
           (equal p (pmod (* m x) q)))))
   :hints (("Subgoal 1" :use (smallest-coefficient-pair-invariant-1))
           ("Subgoal 2" :use (smallest-coefficient-pair-invariant-2))))
-
-;; (defun minimal-invariant (k n m p q)
-;;   (and (equal (* k p) (+ q (* m n)))
-;;        (implies
-;;         (<= -1 n)
-;;         (<= 1 k))
-;;        (implies
-;;         (<= p 0)
-;;         (and (< k q)
-;;              (equal m 1)))
-;;        (implies
-;;         (<= p 1)
-;;         (<= 1 m))))
-
-;; dag
-;; (encapsulate
-;;     ()
-
-;;   (local (include-book "arithmetic-5/top" :dir :system))
-  
-;;   (SET-NON-LINEARP T)
-  
-;;   (defthmd invariant-induced-bound
-;;     (implies
-;;      (and
-;;       (minimal-invariant k n m p q)
-;;       (natp m)
-;;       (natp k)
-;;       (negp n)
-;;       (natp p)
-;;       (posp q))
-;;      (and (<= k q)
-;;           (< m q))))
-  
-;;     :hints (("Goal" :cases ((<= p 0)))))
-
-;;   )
-
-;; (defthmd minimal-invariant-step-minimal-fractions-pair
-;;   (implies
-;;    (and
-;;     (minimal-invariant k n m p q)
-;;     (natp k)
-;;     (negp n)
-;;     (natp m)
-;;     (natp p)
-;;     (posp q))
-;;    (mv-let (k n m p) (step-minimal-fractions-pair k n m p)
-;;      (minimal-invariant k n m p q))))
-
-;; (defthm NON-TRIVIAL-MODULUS-implies-posp
-;;   (implies
-;;    (NON-TRIVIAL-MODULUS x)
-;;    (posp x))
-;;   :rule-classes (:forward-chaining))
-
-;; (defthm smallest-coefficient-pair-step-minimal-fractions-pair
-;;   (implies
-;;    (and
-;;     (smallest-coefficient-pair k m x q)
-;;     (natp k)
-;;     (natp m)
-;;     (natp x)
-;;     (non-trivial-modulus q)
-;;     (generic-invertible-p x q)
-;;     (minimal-invariant k n m p q)
-;;     (posp p)
-;;     (equal n (nmod (* k x) q))
-;;     (equal p (pmod (* m x) q)))
-;;    (mv-let (k n m p) (step-minimal-fractions-pair k n m p)
-;;      (and (smallest-coefficient-pair k m x q)
-;;           (minimal-invariant k n m p q)
-;;           (equal n (nmod (* k x) q))
-;;           (equal p (pmod (* m x) q)))))
-;;   :otf-flg t
-;;   :hints (("Goal" :in-theory '(NON-TRIVIAL-MODULUS-implies-posp
-;;                                T-T-IMPLIES-NEGP-NMOD
-;;                                T-T-IMPLIES-NATP-PMOD)
-;;            :use (invariant-induced-bound
-;;                  minimal-invariant-step-minimal-fractions-pair
-;;                  smallest-coefficient-pair-step-minimal-fractions-pair-bound))))
-
-;; #+joe
-;; (defthm smallest-coefficient-non-increasing
-;;   (implies
-;;    (and
-;;     (negp n)
-;;     (posp p))
-;;    (mv-let (k n1 m p1) (step-minimal-fractions-pair k n m p)
-;;      (declare (ignore k m))
-;;      (and (<= n n1)
-;;           (<= p1 p))))
-;;   :rule-classes :linear)
 
 (encapsulate
     ()
@@ -548,10 +531,6 @@
   
   )
   
-;;
-;;
-;;
-
 (defthm magnitude-invariant
   (implies
    (and
@@ -891,7 +870,6 @@
     (natp m)
     (natp x)
     (non-trivial-modulus q)
-    ;;(generic-invertible-p x q)
     (smallest-coefficient-pair k m x q)
     (equal n (nmod (* k x) q))
     (equal p (pmod (* m x) q)))
@@ -922,7 +900,6 @@
    (and
     (natp x)
     (non-trivial-modulus q)
-    ;;(generic-invertible-p x q)
     )
    (minimal-fractions-pair-listp (minimal-fractions-list x q) x q)))
 
@@ -943,8 +920,6 @@
   (declare (xargs :guard (and (integerp x) (posp q))))
   (let ((list (minimal-fractions-list x q)))
     (print-minimal-fractions-pair-list list)))
-
-;; (print-all-minimal-fractions 7 17)
 
 (in-theory (disable lt-sqrt))
 
@@ -1072,5 +1047,3 @@
   (declare (xargs :guard (posp q)))
   (let ((list (minimum-fraction-list q)))
     (print-minimum-fraction-list 1 list)))
-
-;; (print-all-minimum-fractions 17)    
