@@ -674,7 +674,8 @@
       (natp c)
       (equal (* z p) c)
       (not (lt-sqrt z c)))
-     (or (equal (* p p) c)
+     (or (and (equal (* p p) c)
+              (equal p z))
          (lt-sqrt p c)))
     :rule-classes nil
     :hints (("Goal" :in-theory (enable lt-sqrt))))
@@ -698,8 +699,10 @@
       (lt-sqrt k c)
       (lt-sqrt m c)
       (not (lt-sqrt (+ k m) c)))
-     (or (equal (* p p) c)
-         (equal (* n n) c)
+     (or (and (equal (* p p) c)
+              (equal (* n n) c)
+              (equal p (+ k m))
+              (equal (- n) (+ k m)))
          (lt-sqrt p c)
          (lt-sqrt n c)))
     :otf-flg t
@@ -718,6 +721,29 @@
            (< 0 n))
     :hints (("Goal" :in-theory (enable lt-sqrt))))
 
+  (defthm one-fraction-lt-sqrt-nat
+    (implies
+     (and
+      (natp k)
+      (negp n)
+      (natp m)
+      (natp p)
+      (natp q)
+      (equal (- (* k p) (* m n)) q)
+      (lt-sqrt k q)
+      (lt-sqrt m q)
+      (not (lt-sqrt (+ k m) q)))
+     (or (and (equal (* p p) q)
+              (equal (* n n) q)
+              (equal p (+ k m))
+              (equal (- n) (+ k m)))
+         (lt-sqrt p q)
+         (lt-sqrt n q)))
+    :otf-flg t
+    :rule-classes nil
+    :hints (("Goal" :use (:instance one-fraction-lt-sqrt-alt
+                                    (c q)))))
+
   (defthm one-fraction-lt-sqrt
     (implies
      (and
@@ -730,15 +756,16 @@
       (lt-sqrt k q)
       (lt-sqrt m q)
       (not (lt-sqrt (+ k m) q)))
-     (or (equal (* p p) q)
-         (equal (* n n) q)
+     (or (and (equal (* p p) q)
+              (equal (* n n) q)
+              (lt-sqrt k q)
+              (lt-sqrt m q))
          (lt-sqrt p q)
          (lt-sqrt n q)))
     :otf-flg t
     :rule-classes nil
-    :hints (("Goal" :use (:instance one-fraction-lt-sqrt-alt
-                                    (c q)))))
-             
+    :hints (("Goal" :use (:instance one-fraction-lt-sqrt-nat))))
+               
   )
 
 ;; k n m p
@@ -884,7 +911,8 @@
     (lt-sqrt k q)
     (lt-sqrt m q))
    (mv-let (n d) (minimum-fraction-rec k n m p q)
-     (or (equal (* n n) q)
+     (or (and (equal (* n n) q)
+              (lt-sqrt d q))
          (and (lt-sqrt n q)
               (lt-sqrt d q)))))
   :rule-classes nil
@@ -921,7 +949,8 @@
     (integerp x)
     (non-trivial-modulus q))
    (mv-let (n d) (minimum-fraction x q)
-     (or (equal (* n n) q)
+     (or (and (equal (* n n) q)
+              (lt-sqrt d q))
          (and (lt-sqrt n q)
               (lt-sqrt d q)))))
   :rule-classes nil
