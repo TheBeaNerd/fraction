@@ -1,8 +1,67 @@
 (in-package "ACL2")
 
-(include-book "generic-mod-property")
+;;(include-book "generic-mod-property")
+(include-book "coi/quantification/quantified-congruence" :dir :system)
 (include-book "coi/util/skip-rewrite" :dir :system)
 (include-book "nary")
+
+(defthm natp-nfix
+  (implies
+   (natp x)
+   (equal (nfix x) x)))
+
+(defun nfix-equiv (x y)
+  (equal (nfix x) (nfix y)))
+
+(defequiv nfix-equiv)
+
+(defthm nfix-equiv-nfix
+  (nfix-equiv (nfix x) x))
+
+(defcong nfix-equiv equal (nfix x) 1)
+
+(in-theory (disable nfix-equiv))
+
+(defun ifix-equiv (x y)
+  (equal (ifix x) (ifix y)))
+
+(defequiv ifix-equiv)
+
+(defthm ifix-equiv-ifix
+  (ifix-equiv (ifix x) x))
+
+(defcong ifix-equiv equal (ifix x) 1)
+
+(defun pfix (x)
+  (declare (type t x))
+  (if (posp x) x 1))
+
+(defthm posp-pfix-identity
+  (implies
+   (posp x)
+   (equal (pfix x) x)))
+
+(defthm posp-pfix
+  (posp (pfix x))
+  :rule-classes ((:forward-chaining :trigger-terms ((pfix x)))))
+
+(defthm posp-implies
+  (implies
+   (posp x)
+   (and (natp x)
+        (integerp x)
+        (< 0 x)))
+  :rule-classes (:forward-chaining))
+
+(defun pfix-equiv (x y)
+  (equal (pfix x) (pfix y)))
+
+(defequiv pfix-equiv)
+
+(defthm pfix-equiv-pfix
+  (pfix-equiv (pfix x) x))
+
+(defcong pfix-equiv equal (pfix x) 1)
 
 (defun negp (x)
   (declare (type t x))
