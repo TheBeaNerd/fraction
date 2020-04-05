@@ -926,7 +926,10 @@
     )
    (minimal-fractions-pair-listp (minimal-fractions-list x q) x q)))
 
+(in-theory (disable minimal-fractions-list))
+
 (defun print-minimal-fractions-pair-list (list)
+  (declare (xargs :guard (fractions-listp list)))
   (if (not (consp list)) (null list)
     (let ((entry (car list)))
       (case-match entry
@@ -935,6 +938,13 @@
           (cw "~p1/~p0 ~p3/~p2~%" k n m p)
           (print-minimal-fractions-pair-list (cdr list))))
         (t nil)))))
+
+(def::und print-all-minimal-fractions (x q)
+  (declare (xargs :guard (and (integerp x) (posp q))))
+  (let ((list (minimal-fractions-list x q)))
+    (print-minimal-fractions-pair-list list)))
+
+;; (print-all-minimal-fractions 7 17)
 
 (in-theory (disable lt-sqrt))
 
@@ -1021,3 +1031,46 @@
                            (m 1)
                            (p (pmod x q))))))
 
+(in-theory (disable minimum-fraction))
+
+(defun minimum-fraction-listp (list)
+  (declare (type t list))
+  (if (not (consp list)) (null list)
+    (let ((entry (car list)))
+      (case-match entry
+        ((n d) (and (integerp n)
+                    (natp d)
+                    (minimum-fraction-listp (cdr list))))
+        (& nil)))))
+
+(def::un minimum-fraction-list-rec (x q)
+  (declare (xargs :signature ((natp posp) minimum-fraction-listp)
+                  :measure (nfix (- (nfix q) (nfix x)))))
+  (let ((q (nfix q))
+        (x (nfix x)))
+    (if (<= q x) nil
+      (mv-let (n d) (minimum-fraction x q)
+        (cons (list n d)
+              (minimum-fraction-list-rec (1+ x) q))))))
+
+(def::und minimum-fraction-list (q)
+  (declare (xargs :signature ((posp) minimum-fraction-listp)))
+  (minimum-fraction-list-rec 1 q))
+
+(defun print-minimum-fraction-list (i list)
+  (declare (xargs :guard (and (natp i) (minimum-fraction-listp list))))
+  (if (not (consp list)) (null list)
+    (let ((entry (car list)))
+      (case-match entry
+        ((n d)
+         (prog2$
+          (cw "~p0 : ~p1/~p2~%" i n d)
+          (print-minimum-fraction-list (1+ i) (cdr list))))
+        (t nil)))))
+
+(defun print-all-minimum-fractions (q)
+  (declare (xargs :guard (posp q)))
+  (let ((list (minimum-fraction-list q)))
+    (print-minimum-fraction-list 1 list)))
+
+;; (print-all-minimum-fractions 17)    
