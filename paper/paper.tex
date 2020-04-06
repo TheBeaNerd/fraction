@@ -30,11 +30,11 @@
 \begin{abstract}
 
 We say that the fraction $\frac{N}{D}$ \emph{represents} $x \in
-\mathbf{Z}/m\mathbf{Z}$ when $x*D \equiv N \Mod{M}$.  This definition
+\mathbf{Z}/m\mathbf{Z}$ when $x*D \equiv N \Mod{M}$.  Our definition
 admits many possible fractional representations.  We say that
 $\frac{N}{D}$ is a \emph{minimal} representation of $x$ if no smaller
-denominator ($D$) results in a numerator with a magnitude less then
-$N$.  We introduce a function for computing such fractional
+denominator ($D$) results in a numerator with a magnitude less than
+the magnitude of $N$.  We introduce a function for computing such fractional
 representations and prove that it generates minimal fractions.  We
 also prove that every $x \in \mathbf{Z}/m\mathbf{Z}$ has a minimal
 fractional representation in which the magnitude of $N$ and $D$
@@ -44,11 +44,12 @@ are less or equal to $\sqrt{M}$.
 
 \section{Introduction}
 
-In saying that the fraction $\frac{N}{D}$ \emph{represents}\footnote{
-  We might say ``congruent to'' when $D \perp M$ but we don't require
-  this condition.  }  $x \in \mathbf{Z}/m\mathbf{Z}$ when $x*D \equiv
-N \Mod{M}$ we admit many possible fractional representations of $x$,
-some possibly not reduced.  For example, $7 \Mod{17}$ has the
+We say that the fraction $\frac{N}{D}$ \emph{represents} $x \in
+\mathbf{Z}/m\mathbf{Z}$ when $x*D \equiv N \Mod{M}$.  We denote this
+relationship\footnote{ We might say ``congruent to'' when $D \perp M$
+  but we don't require this condition.}  as $x \cong \frac{N}{D} \Mod{M}$ .
+This definition admits many possible fractional representations of
+$x$, some possibly not reduced.  For example, $7 \Mod{17}$ has the
 following representations:
 \begin{spacing}{1.0}
 {\small
@@ -94,10 +95,10 @@ representations of $7 \Mod{17}$ are:
 Within the same residue class (positive or negative), we say that
 $\frac{N}{D}$ is a \emph{minimal} representation of $x$ if no
 denominator smaller than ($D$) results in a numerator with a magnitude
-less then $N$.  ($7/1$) is minimal for $7 \Mod{17}$ simply because we
+less than the magnitude of $N$.  ($7/1$) is minimal for $7 \Mod{17}$ simply because we
 don't consider positive residues with denominators less than 1.  The
 fraction ($\sneg3/2$) is also minimal because $\lvert \sneg3 \rvert$ is
-less then the magnitude of the numerators of both negative fractions
+less than the magnitude of the numerators of both negative fractions
 with denominators less than $2$, ($-17/0$) and ($-10/1$).
 ($\sneg6/4$), however, is not minimal because ($\sneg3/2$) has both a
 smaller magnitude numerator and a smaller denominator.
@@ -123,14 +124,14 @@ of the mediant computation\footnote{As used in the generation of Farey
   is equal to $M$ rather than $1$}:
 
 \begin{equation*}
-x \equiv \frac{N_1}{D_1} \; \land \;
-x \equiv \frac{N_2}{D_2} \; \implies \;
-x \equiv \frac{N_1 + N_2}{D_1 + D_2} \; \; \Mod{M}
+x \cong \frac{N_1}{D_1} \; \land \;
+x \cong \frac{N_2}{D_2} \; \implies \;
+x \cong \frac{N_1 + N_2}{D_1 + D_2} \; \; \Mod{M}
 \end{equation*}
 
 Our algorithm takes as input two minimal fractions with differing
 signs, initially $(x-M)/0$ and $x/1$ (which are trivially minimal).  It
-then recursively replaces the fraction with the largest magnitude
+then recursively replaces the fraction with the larger magnitude
 numerator with the mediant of the two original fractions until one of
 the numerators is zero.  The key to the termination of our algorithm
 is the observation that the mediant of two fractions whose numerators
@@ -148,14 +149,18 @@ for $7 \Mod{17}$ are listed below.
 \]
 }
 
-In addition to our minimality invariant we prove that every $x$ has a fractional
-representation in which both $N$ and $D$ are less than or equal to
-$\sqrt{M}$.  This result follows from the fact that $N_1*D_2 - N_2*D_1 = M$
-is invariant.  Informally, consider the case where $N_1 < \sqrt{M}$ and
-$N_2 < \sqrt{M}$ but $N_1 + N_2 \geq \sqrt{M}$.  If both $D_1 > \sqrt{M}$ and
-$D_2 > \sqrt{M}$, then in the following step, $(N_1 + N_2)*D_i$ will be
+\begin{spacing}{1.05}
+In addition to our minimality invariant we prove that every $x$ has a
+fractional representation in which both $\lvert N \rvert$ and $D$ are
+less than or equal to $\sqrt{M}$.  This result follows from the fact
+that $N_1*D_2 - N_2*D_1 = M$ where $N_1,D_1,D_2 >= 0 \;\land \;N2 < 0$ is
+also an invariant of our algorithm.  Consider the case
+where $D_1 < \sqrt{M}$ and $D_2 < \sqrt{M}$ but $D_1 + D_2 \geq \sqrt{M}$.
+If both $N_1 > \sqrt{M}$ and $\sneg N_2 > \sqrt{M}$,
+then in the following step, $\lvert (D_1 + D_2)*N_i \rvert$ will be
 greater than $M$, violating our invariant.  Thus, at
-least one $D_i < \sqrt{M}$.
+least one $\lvert N_i \rvert \leq \sqrt{M}$.
+\end{spacing}
 
 It is possible for a number to have more than one representation whose
 coefficients are less than $\sqrt{M}$.  For example, $12 \Mod{17}$ is
